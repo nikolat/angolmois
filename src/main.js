@@ -114,7 +114,7 @@ const execSSTP = () => {
 	});
 };
 
-//FOMから起動中のゴースト情報を取得
+//FMOから起動中のゴースト情報を取得
 ipcMain.on('ipc-request-ghost-info', (event) => {
 	const saoridir = `${__dirname}\\saori\\`
 	const path0 = `${saoridir}log\\`;
