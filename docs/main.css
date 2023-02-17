@@ -1,0 +1,66 @@
+@charset "utf-8";
+
+body {
+	color: #7c7;
+	background-color: #454;
+}
+a:link {
+	color: #474;
+}
+a:visited {
+	color: #7a7;
+}
+a:hover {
+	color: #ccc;
+}
+a:active {
+	color: #111;
+}
+#container {
+	background-color: #232;
+	padding: 1em 3em;
+}
+#container fieldset {
+	width: 30%;
+	float: left;
+}
+#container select {
+	vertical-align: top;
+	min-width: 20em;
+}
+#container dl {
+	clear: left;
+	padding-top: 1em;
+	word-break: break-all;
+}
+#container dt {
+	border-top: #aaa 1px solid;
+	padding-top: 5px;
+	clear: left;
+}
+#container dt img {
+	border-radius: 25px;
+	margin-right: 1em;
+	float: left;
+}
+#container dt a {
+	border-radius: 25px;
+	margin-left: 1em;
+}
+#container dt time {
+	color: #aaa;
+	font-size: small;
+	margin-left: 1em;
+}
+#container dt button {
+	float: right;
+}
+#container dd {
+	clear: right;
+	white-space: pre-wrap;
+	margin-left: 70px;
+}
+#container dd ul.relay {
+	font-size: xx-small;
+	color: #aaa;
+}

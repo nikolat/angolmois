@@ -1,0 +1,27 @@
+name: Build
+
+on:
+  workflow_dispatch:
+    
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Node.js, NPM and Yarn
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Build app for release
+        run: |
+          npm install
+          npm run build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: angolmois-win32-x64
+          path: angolmois-win32-x64
