@@ -60,7 +60,8 @@ OnNostr
 ```
 
 ![プレビュー/カスタム](image/preview2.gif "プレビュー/カスタム")  
-※画像は[YAYA-shiori/konnoyayame](https://github.com/YAYA-shiori/konnoyayame)をベースとし、立ち絵を[nobodyu氏作](https://iris.to/post/note1fl4v64guhz3zrmf9l808p5gx6ula7wz307u08r0h2lmxxatuvkxsa60dt3)のものに差し替えたゴーストです。
+※画像は[YAYA-shiori/konnoyayame](https://github.com/YAYA-shiori/konnoyayame)をベースとし、立ち絵を[nobodyu氏作](https://iris.to/post/note1fl4v64guhz3zrmf9l808p5gx6ula7wz307u08r0h2lmxxatuvkxsa60dt3)のものに差し替えたゴーストです。  
+※[さらに可愛く](https://iris.to/post/note1v3yjz9jm7up9ndn9tvctarmcnqna0ttykgu5qmzmhejhrlwrqhvqatfckt)なりました。
 
 ## 他にカスタマイズ方法は？
 音声読み上げプラグイン
