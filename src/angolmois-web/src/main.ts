@@ -5,13 +5,12 @@ import 'websocket-polyfill';
 	const defaultRelays = [
 		'wss://relay-jp.nostr.wirednet.jp',
 		'wss://nostr-relay.nokotaro.com',
-		'wss://relay.nostr.wirednet.jp',
 		'wss://nostr.h3z.jp',
-		'wss://nostr.h3y6e.com',
-		'wss://nostr.holybea.com',
-		'wss://relay.nostr.or.jp'
+		'wss://nostr.holybea.com'
 	];
 	const additionalRelays = [
+		'wss://relay.nostr.wirednet.jp',
+		'wss://relay.nostr.or.jp',
 		'wss://relay.damus.io',
 		'wss://relay.snort.social'
 	];
