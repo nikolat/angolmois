@@ -10,29 +10,58 @@
 	<body>
 		<div id="container">
 			<h1>Angolmois</h1>
-			<p>Nostr日本語リレーのGlobal。プロフィールを持たない投稿（スパム？）は非表示にしています。 by <a href="https://iris.to/nikolat@nikolat.github.io">iris.to/nikolat@nikolat.github.io</a></p>
-			<fieldset>
-				<legend>接続先リレー</legend>
-				<select name="enabled-relay" id="enabled-relay" size="5">
-				</select>
-				<button id="remove">削除</button>
-			</fieldset>
-			<fieldset>
-				<legend>接続候補リレー</legend>
-				<select name="disabled-relay" id="disabled-relay" size="5">
-				</select>
-				<button id="add">追加</button>
-			</fieldset>
-			<fieldset>
-				<legend>DirectSSTP送信先ゴースト</legend>
-				<select name="sstp-target" id="sstp-target">
-				</select>
-				<button id="refresh">ゴースト再検索</button>
-			</fieldset>
-			<dl id="main">
-				<dt>説明</dt>
-				<dd>しばらくすると上に投稿が流れて来ます。</dd>
-			</dl>
+			<p>プロフィールを持たない投稿（スパム？）は非表示にしています。 by <a href="https://iris.to/nikolat@nikolat.github.io">iris.to/nikolat@nikolat.github.io</a></p>
+			<div>
+				<fieldset>
+					<legend>DirectSSTP送信先ゴースト</legend>
+					<select name="sstp-target" id="sstp-target">
+					</select>
+					<button id="refresh">ゴースト再検索</button>
+				</fieldset>
+			</div>
+			<div class="tabs">
+				<input id="global" type="radio" name="tab_item" checked>
+				<label class="tab_item" for="global">グローバル</label>
+				<input id="following" type="radio" name="tab_item">
+				<label class="tab_item" for="following">フォロー中</label>
+				<div class="tab_content" id="global_content">
+					<div class="tab_content_description">
+						<fieldset>
+							<legend>接続先リレー</legend>
+							<select name="enabled-relay" id="enabled-relay" size="5">
+							</select>
+							<button id="remove">削除</button>
+						</fieldset>
+						<fieldset>
+							<legend>接続候補リレー</legend>
+							<select name="disabled-relay" id="disabled-relay" size="5">
+							</select>
+							<button id="add">追加</button>
+						</fieldset>
+						<dl id="global-tl">
+							<dt>説明</dt>
+							<dd>しばらくすると上に投稿が流れて来ます。</dd>
+						</dl>
+					</div>
+				</div>
+				<div class="tab_content" id="following_content">
+					<div class="tab_content_description">
+						<label for="pubkey">公開鍵</label>
+						<input id="pubkey" name="pubkey" type="text" size="63" minlength="63" maxlength="63" placeholder="npub1...">
+						<label for="following-relay">接続先リレー</label>
+						<select name="following-relay" id="following-relay" size="5">
+						</select>
+						<dl id="profile-dl">
+							<dt id="profile-dt">None</dt>
+							<dd id="profile-dd">None</dd>
+						</dl>
+						<dl id="following-tl">
+							<dt>説明</dt>
+							<dd>しばらくすると上に投稿が流れて来ます。</dd>
+						</dl>
+					</div>
+				</div>
+			</div>
 		</div>
 	</body>
 </html>

@@ -1,15 +1,15 @@
-import { Filter, SimplePool, nip19 } from 'nostr-tools';
+import { Filter, SimplePool, nip19, Sub } from 'nostr-tools';
 import 'websocket-polyfill';
 
 (function (){
 	const defaultRelays = [
 		'wss://relay-jp.nostr.wirednet.jp',
-		'wss://nostr-relay.nokotaro.com',
+		'wss://nostr.holybea.com',
 		'wss://nostr.h3z.jp',
-		'wss://nostr.holybea.com'
 	];
 	const additionalRelays = [
 		'wss://relay.nostr.wirednet.jp',
+		'wss://nostr-relay.nokotaro.com',
 		'wss://relay.nostr.or.jp',
 		'wss://relay.damus.io',
 		'wss://relay.snort.social'
@@ -26,11 +26,11 @@ import 'websocket-polyfill';
 	});
 
 	//起動中のゴーストを検索
-	let names: string[] = [];
+	let ghostNames: string[] = [];
 	let hwnds: string[] = [];
 	if (isElectron) {
 		(window as any).api.ReceiveGhostInfo((data: string[][]) => {
-			names = data[0];
+			ghostNames = data[0];
 			hwnds = data[1];
 			//ドロップダウンメニューに配置
 			const sstpTarget = <HTMLSelectElement>document.getElementById('sstp-target');
@@ -38,10 +38,10 @@ import 'websocket-polyfill';
 			for (let i = 0; i < n; i++) {
 				sstpTarget.remove(0);
 			}
-			for (let i = 0; i < names.length; i++) {
+			for (let i = 0; i < ghostNames.length; i++) {
 				const option = <HTMLOptionElement>document.createElement('option');
-				option.setAttribute('value', names[i]);
-				option.appendChild(document.createTextNode(names[i]));
+				option.setAttribute('value', ghostNames[i]);
+				option.appendChild(document.createTextNode(ghostNames[i]));
 				sstpTarget?.appendChild(option);
 			}
 		});
@@ -58,13 +58,281 @@ import 'websocket-polyfill';
 	}
 
 	const pool = new SimplePool();
+	const hasDOM: boolean = typeof window === 'object';
 	//初回の接続
 	let subs = connectRelay(defaultRelays);//このsubsは全スコープで使い回す
 	//ts-doneで実行する際はDOM操作はできない
-	const hasDOM: boolean = typeof window === 'object';
 	if (hasDOM) {
 		//リレーをセレクトボックスに入れる
 		deployRelay(defaultRelays, additionalRelays);
+		//公開鍵の入力に反応
+		const pubkeyInput = <HTMLInputElement>document.getElementById('pubkey');
+
+		let subsFollowing: Sub;
+		pubkeyInput.addEventListener('change', () => {
+			const {type, data} = nip19.decode(pubkeyInput.value);
+			let pubkey: string = '';
+			if (typeof data === 'string') {
+				pubkey = data;
+			}
+			else {
+				return;
+			}
+			const f3: Filter = {
+				kinds: [3],
+				authors: [pubkey],
+				limit: 1
+			};
+			//グローバルのリレーとフォロー中リレーから取得する
+			const tRelays: string[] = [];
+			Array.from((<HTMLSelectElement>document.getElementById('enabled-relay')).options).forEach(option => {
+				tRelays.push(option.value);
+			});
+			Array.from((<HTMLSelectElement>document.getElementById('following-relay')).options).forEach(option => {
+				tRelays.push(option.value);
+			});
+			const subsF3 = pool.sub(Array.from(new Set(tRelays)), [f3]);
+			let gotF3 = false;
+			subsF3.on('event', (eventF3: any) => {
+				if (gotF3) {
+					return;
+				}
+				gotF3 = true;
+				const relays: any = JSON.parse(eventF3.content);
+				const relaysa: string[] = [];
+				const followings: string[] = [];
+				eventF3.tags.forEach((tag: string[]) => {
+					if (tag[0] == 'p') {
+						followings.push(tag[1]);
+					}
+				});
+				const followingRelays = <HTMLSelectElement>document.getElementById('following-relay');
+				Array.from(followingRelays.options).forEach(option => {
+					followingRelays.remove(0);
+				});
+				Object.keys(relays).forEach(function(relay) {
+					relaysa.push(relay);
+					const op = <HTMLOptGroupElement>document.createElement('option');
+					op.textContent = relay;
+					followingRelays.add(op);
+				});
+				relaysa.forEach(async function(relay) {
+					try {
+						await pool.ensureRelay(relay);
+					} catch (error) {
+						console.log('ensureRelay error: ', error);
+					}
+				});
+				const f0: Filter = {
+					kinds: [0],
+					authors: [pubkey],
+					limit: 1
+				};
+				const subsF0 = pool.sub(relaysa, [f0]);
+				subsF0.on('event', (eventF0: any) => {
+					const c: any = JSON.parse(eventF0.content);
+					const dt = <HTMLElement>document.getElementById('profile-dt');
+					dt.innerHTML = '';
+					if (c.picture != undefined) {
+						const img = document.createElement('img');
+						img.src = c.picture;
+						img.alt = c.name;
+						img.width = iconSize;
+						img.height = iconSize;
+						dt.appendChild(img);
+					}
+					dt.appendChild(document.createTextNode(c.display_name));
+					const a = document.createElement('a');
+					a.setAttribute('href', 'https://iris.to/' + nip19.npubEncode(eventF0.pubkey));
+					a.textContent = '@' + c.name;
+					dt.appendChild(a);
+					const dd = <HTMLElement>document.getElementById('profile-dd');
+					dd.innerHTML = '';
+					dd.appendChild(document.createTextNode(c.about));
+				});
+				subsF0.on('eose', () => {
+					subsF0.unsub();
+				});
+				followings.push(pubkey);
+				const f1: Filter = {
+					kinds: [1],
+					authors: followings,
+					since: Math.floor(Date.now() / 1000) - 30 * 60,
+					limit: 20
+				};
+				const subsF1 = pool.sub(relaysa, [f1]);
+				const dl = <HTMLElement>document.getElementById('following-tl');
+				dl.innerHTML = '';
+				subsF1.on('event', (eventF1: any) => {
+					makeTL('following', relaysa, eventF1);
+				});
+				subsF1.on('eose', () => {
+				});
+				subsFollowing.unsub();
+				subsFollowing = subsF1;
+			});
+			subsF3.on('eose', () => {
+				subsF3.unsub();
+			});
+		});
+	}
+
+	//逆引きできるよう投稿者の情報をためておく
+	const pubkeys: { [key: string]: string; } = {};//idからpubkeyを逆引きするためのもの
+	const names: { [key: string]: string; } = {};//pubkeyからプロフィール情報を逆引きするためのもの
+	function makeTL(tabID: string, relays: string[], event: any) {
+		//投稿者のプロフィールを取得
+		const f2: Filter = {
+			kinds: [0],
+			authors: [event.pubkey]
+		};
+		const subs2 = pool.sub(relays, [f2]);
+		let added: boolean = false;
+		subs2.on('event', (event2: any) => {
+			//保存時期が異なるプロフィールがそれぞれのリレーから送られる場合がある
+			if (added) {
+				return;
+			}
+			//プロフィール情報は最初のリレーの1個で十分(リレーによっては古いプロフィール情報が保存されている場合があるため複数やってくる)
+			added = true;
+			const profile = JSON.parse(event2.content);
+			//プロフィールが見つかったnote
+			console.log('note text: ', event.content);
+			console.log('profile: ', profile);
+			console.log('note: ', event);
+			//レンダリング
+			const dt = document.createElement('dt');
+			if (profile.picture != undefined) {
+				const img = document.createElement('img');
+				img.src = profile.picture;
+				img.alt = profile.name;
+				img.width = iconSize;
+				img.height = iconSize;
+				dt.appendChild(img);
+			}
+			dt.appendChild(document.createTextNode(profile.display_name));
+			const a = document.createElement('a');
+			a.setAttribute('href', 'https://iris.to/' + nip19.npubEncode(event.pubkey));
+			a.textContent = '@' + profile.name;
+			dt.appendChild(a);
+			const time = document.createElement('time');
+			time.textContent = dtformat.format(new Date(event.created_at * 1000));
+			dt.appendChild(time);
+			dt.setAttribute('id', tabID + '-' + nip19.noteEncode(event.id));
+			dt.setAttribute('data-timestamp', event.created_at);
+			const dd = document.createElement('dd');
+			let hasReply: boolean = false;
+			let hasMention: boolean = false;
+			let in_reply_to: string = '';
+			let mention_to: string = '';
+			const mentions: string[] = [];
+			event.tags.forEach((tag: any) => {
+				if (tag[0] == 'e') {
+					hasReply = true;
+					in_reply_to = tag[1];
+					mentions.push(nip19.noteEncode(tag[1]));
+				}
+				else if (tag[0] == 'p') {
+					hasMention = true;
+					mentions.push(nip19.npubEncode(tag[1]));
+				}
+			});
+			if (hasReply && names[pubkeys[in_reply_to]] != undefined) {
+				dd.appendChild(document.createTextNode('@' + names[pubkeys[in_reply_to]]));
+				dd.appendChild(document.createElement('br'));
+			}
+			else if (hasMention && names[mention_to] != undefined) {
+				dd.appendChild(document.createTextNode('@' + names[mention_to]));
+				dd.appendChild(document.createElement('br'));
+			}
+			event.content.split(/(#\[\d+\])/).forEach((e: string) => {
+				const m = e.match(/#\[(\d+)\]/);
+				if (m) {
+					const aId = document.createElement('a');
+					aId.setAttribute('href', '#' + nip19.npubEncode(mentions[Number(m[1])]));
+					aId.textContent = e;
+					dd.appendChild(aId);
+				}
+				else {
+					dd.appendChild(document.createTextNode(e));
+				}
+			});
+			//SSTP Button
+			if (isElectron) {
+				const SSTPButton = document.createElement('button');
+				SSTPButton.textContent = 'Send SSTP';
+				SSTPButton.addEventListener('click', function(ev: MouseEvent) {
+					sendDirectSSTP(event.content, profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
+				});
+				dt.appendChild(SSTPButton);
+			}
+			//Change ID Button
+			const changeIdButton = document.createElement('button');
+			changeIdButton.textContent = 'この人でログインする';
+			changeIdButton.addEventListener('click', function(ev: MouseEvent) {
+				const pubkeyInput = <HTMLInputElement>document.getElementById('pubkey');
+				pubkeyInput.value = nip19.npubEncode(event.pubkey);
+				pubkeyInput.dispatchEvent(new Event('change'));
+				const followingInput = <HTMLInputElement>document.getElementById('following');
+				followingInput.checked = true;
+			});
+			dt.appendChild(changeIdButton);
+			//relay
+			const ulFrom = <HTMLUListElement>document.createElement('ul');
+			ulFrom.className = 'relay';
+			pool.seenOn(event.id).forEach(relay => {
+				const liFrom = <HTMLLIElement>document.createElement('li');
+				liFrom.textContent = relay;
+				ulFrom.appendChild(liFrom);
+			});
+			dd.appendChild(ulFrom);
+			const dl = <HTMLElement>document.getElementById(tabID + '-tl');
+			//情報をためておく
+			if (!(profile.name in names)) {
+				names[event.pubkey] = profile.name;
+			}
+			if (!(event.id in pubkeys)) {
+				pubkeys[event.id] = event.pubkey;
+			}
+			//重複表示回避
+			if (document.getElementById(tabID + '-' + nip19.noteEncode(event.id))) {
+				return;
+			}
+			//時系列に表示する
+			const dts = dl.querySelectorAll('dt')
+			let appended: boolean = false;
+			let isNewest: boolean = false;
+			if (dts.length > 0) {
+				for (let i = 0; i < dts.length; i++) {
+					const t: number = Number(dts[i].dataset.timestamp);
+					if (t < event.created_at) {
+						dl.insertBefore(dd, dts[i]);
+						dl.insertBefore(dt, dd);
+						appended = true;
+						if (i == 0) {
+							isNewest = true;
+						}
+						break;
+					}
+				}
+				if (!appended) {
+					dl.appendChild(dt);
+					dl.appendChild(dd);
+					appended = true;
+				}
+			} else {
+				isNewest = true;
+				dl.prepend(dd);
+				dl.prepend(dt);
+			}
+			//ゴーストにDirectSSTPを送信
+			if ((<HTMLInputElement>document.getElementById(tabID)).checked && isNewest) {
+				sendDirectSSTP(event.content, profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
+			}
+		});
+		subs2.on('eose', () => {
+			subs2.unsub();
+		});
 	}
 
 	//リレーに繋ぐ
@@ -72,125 +340,16 @@ import 'websocket-polyfill';
 		//現在時刻以降の投稿を取得
 		const f: Filter = {
 			kinds: [1],
-			since: Math.floor(Date.now() / 1000),
-			limit: 1
+			since: Math.floor(Date.now() / 1000) - 30 * 60,
+			limit: 20
 		};
 		const subs = pool.sub(relays, [f]);
-		//逆引きできるよう投稿者の情報をためておく
-		const pubkeys: { [key: string]: string; } = {};//idからpubkeyを逆引きするためのもの
-		const names: { [key: string]: string; } = {};//pubkeyからプロフィール情報を逆引きするためのもの
+		if (hasDOM) {
+			const dl = <HTMLElement>document.getElementById('global-tl');
+			dl.innerHTML = '';
+		}
 		subs.on('event', (event: any) => {
-			//投稿者のプロフィールを取得
-			const f2: Filter = {
-				kinds: [0],
-				authors: [event.pubkey]
-			};
-			const subs2 = pool.sub(relays, [f2]);
-			let added: boolean = false;
-			subs2.on('event', (event2: any) => {
-				//保存時期が異なるプロフィールがそれぞれのリレーから送られる場合がある
-				if (added) {
-					return;
-				}
-				//プロフィール情報は最初のリレーの1個で十分(リレーによっては古いプロフィール情報が保存されている場合があるため複数やってくる)
-				added = true;
-				const profile = JSON.parse(event2.content);
-				//プロフィールが見つかったnote
-				console.log('note text: ', event.content);
-				console.log('profile: ', profile);
-				console.log('note: ', event);
-				//console.log('relay: ', pool.seenOn(event.id));
-				//レンダリング
-				const dt = document.createElement('dt');
-				if (profile.picture != undefined) {
-					const img = document.createElement('img');
-					img.src = profile.picture;
-					img.alt = profile.name;
-					img.width = iconSize;
-					img.height = iconSize;
-					dt.appendChild(img);
-				}
-				dt.appendChild(document.createTextNode(profile.display_name));
-				const a = document.createElement('a');
-				a.setAttribute('href', 'https://iris.to/' + nip19.npubEncode(event.pubkey));
-				a.textContent = "@" + profile.name;
-				dt.appendChild(a);
-				const time = document.createElement('time');
-				time.textContent = dtformat.format(new Date(event.created_at * 1000));
-				dt.appendChild(time);
-				dt.setAttribute('id', nip19.noteEncode(event.id));
-				const dd = document.createElement('dd');
-				let hasReply: boolean = false;
-				let hasMention: boolean = false;
-				let in_reply_to: string = '';
-				let mention_to: string = '';
-				const mentions: string[] = [];
-				event.tags.forEach((tag: any) => {
-					if (tag[0] == 'e') {
-						hasReply = true;
-						in_reply_to = tag[1];
-						mentions.push(nip19.noteEncode(tag[1]));
-					}
-					else if (tag[0] == 'p') {
-						hasMention = true;
-						mentions.push(nip19.npubEncode(tag[1]));
-					}
-				});
-				if (hasReply && names[pubkeys[in_reply_to]] != undefined) {
-					dd.appendChild(document.createTextNode('@' + names[pubkeys[in_reply_to]]));
-					dd.appendChild(document.createElement('br'));
-				}
-				else if (hasMention && names[mention_to] != undefined) {
-					dd.appendChild(document.createTextNode('@' + names[mention_to]));
-					dd.appendChild(document.createElement('br'));
-				}
-				event.content.split(/(#\[\d+\])/).forEach((e: string) => {
-					const m = e.match(/#\[(\d+)\]/);
-					if (m) {
-						const aId = document.createElement('a');
-						aId.setAttribute('href', '#' + nip19.npubEncode(mentions[Number(m[1])]));
-						aId.textContent = e;
-						dd.appendChild(aId);
-					}
-					else {
-						dd.appendChild(document.createTextNode(e));
-					}
-				});
-				//SSTP Button
-				if (isElectron) {
-					const SSTPButton = document.createElement('button');
-					SSTPButton.textContent = 'Send SSTP';
-					SSTPButton.addEventListener('click', function(ev: MouseEvent) {
-						sendDirectSSTP(event.content, profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
-					});
-					dt.appendChild(SSTPButton);
-				}
-				//relay
-				const ulFrom = <HTMLUListElement>document.createElement('ul');
-				ulFrom.className = 'relay';
-				pool.seenOn(event.id).forEach(relay => {
-					const liFrom = <HTMLLIElement>document.createElement('li');
-					liFrom.textContent = relay;
-					ulFrom.appendChild(liFrom);
-				});
-				dd.appendChild(ulFrom);
-				const dl = document.getElementById('main');
-				//情報をためておく
-				if (!(profile.name in names)) {
-					names[event.pubkey] = profile.name;
-				}
-				if (!(event.id in pubkeys)) {
-					pubkeys[event.id] = event.pubkey;
-					dl?.prepend(dd);
-					dl?.prepend(dt);
-					//ゴーストにDirectSSTPを送信
-					sendDirectSSTP(event.content, profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
-				}
-			});
-			subs2.on('eose', () => {
-				//console.log('eose: getting profile of ' + event.pubkey);
-				subs2.unsub();
-			});
+			makeTL('global', relays, event);
 		});
 		//このsubsは全スコープで使い回す必要があるためreturnしてあげる
 		return subs;
