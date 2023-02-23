@@ -69,7 +69,7 @@ ipcMain.on('ipc-SSTP-send', (event, data) => {
 		+ 'IfGhost: ' + ifGhost + '\r\n'
 		+ 'Script: ' + script + '\r\n';
 	for (let i = 3; i < data.length; i++) {
-			mes += 'Reference' + (i - 2) + ': ' + data[i] + '\r\n';
+		mes += 'Reference' + (i - 2) + ': ' + data[i] + '\r\n';
 	}
 
 
