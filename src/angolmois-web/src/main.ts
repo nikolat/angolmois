@@ -1,4 +1,13 @@
-import { Filter, SimplePool, nip19, Sub } from 'nostr-tools';
+import {
+	Filter,
+	SimplePool,
+	nip19,
+	Sub,
+	generatePrivateKey,
+	getPublicKey,
+	getEventHash,
+	signEvent
+} from 'nostr-tools';
 import 'websocket-polyfill';
 
 (function (){
@@ -14,8 +23,15 @@ import 'websocket-polyfill';
 		'wss://relay.damus.io',
 		'wss://relay.snort.social'
 	];
+	const bottleRelays = [
+		'wss://relay-jp.nostr.wirednet.jp',
+		'wss://nostr.holybea.com'
+	];
+	const bottleKinds: number[] = [9801, 9821];
+	const defaultBottleKind = 9801;
 	const iconSize = 50;
-	const isElectron: boolean = typeof window === 'object' ? (window as any).api != undefined : false;
+	const hasDOM: boolean = typeof window === 'object';
+	const isElectron: boolean = hasDOM ? (window as any).api != undefined : false;
 	const dtformat = new Intl.DateTimeFormat('ja-jp', {
 		year: 'numeric',
 		month: '2-digit',
@@ -24,47 +40,128 @@ import 'websocket-polyfill';
 		minute: '2-digit',
 		second: '2-digit'
 	});
+	//使い捨ての秘密鍵で投稿するものとする
+	const sk = generatePrivateKey();
+	const pk = getPublicKey(sk);
 
+	//このsubsは全スコープで使い回す
+	let subsBase: Sub;
 	//起動中のゴーストを検索
 	let ghostNames: string[] = [];
+	let keroNames: string[] = [];
 	let hwnds: string[] = [];
 	if (isElectron) {
 		(window as any).api.ReceiveGhostInfo((data: string[][]) => {
-			ghostNames = data[0];
-			hwnds = data[1];
+			hwnds = data[0];
+			ghostNames = data[1];
+			keroNames = data[2];
 			//ドロップダウンメニューに配置
 			const sstpTarget = <HTMLSelectElement>document.getElementById('sstp-target');
+			const ifGhost = <HTMLSelectElement>document.getElementById('bottle-ifghost');
 			const n = sstpTarget.childElementCount;
 			for (let i = 0; i < n; i++) {
 				sstpTarget.remove(0);
+				ifGhost.remove(0);
 			}
 			for (let i = 0; i < ghostNames.length; i++) {
-				const option = <HTMLOptionElement>document.createElement('option');
-				option.setAttribute('value', ghostNames[i]);
-				option.appendChild(document.createTextNode(ghostNames[i]));
-				sstpTarget?.appendChild(option);
+				const optionSstpTarget = <HTMLOptionElement>document.createElement('option');
+				optionSstpTarget.setAttribute('value', ghostNames[i]);
+				optionSstpTarget.appendChild(document.createTextNode(ghostNames[i]));
+				sstpTarget.appendChild(optionSstpTarget);
+				const optionIgGhost = <HTMLOptionElement>document.createElement('option');
+				optionIgGhost.setAttribute('value', ghostNames[i] + ',' + keroNames[i]);
+				optionIgGhost.appendChild(document.createTextNode(ghostNames[i] + ',' + keroNames[i]));
+				ifGhost.appendChild(optionIgGhost);
 			}
+			bottleSend.disabled = ghostNames.length == 0;
 		});
 		(window as any).api.RequestGhostInfo();
 		const refreshButton = <HTMLButtonElement>document.getElementById('refresh');
 		refreshButton.addEventListener('click', function(){(window as any).api.RequestGhostInfo()});
+		//Bottle送信
+		const bottleSend = <HTMLButtonElement>document.getElementById('bottle-send');
+		bottleSend.addEventListener('click', function(ev: MouseEvent) {
+			const bottleScript = <HTMLTextAreaElement>document.getElementById('bottle-script');
+			if (bottleScript == null) {
+				return;
+			}
+			const script = bottleScript.value.replace(/\n/g, '');
+			if (script == '') {
+				return;
+			}
+			const ifGhost = (<HTMLSelectElement>document.getElementById('bottle-ifghost')).value;
+			const contentDict = {
+				'Script': script,
+				'IfGhost': ifGhost
+			};
+			const kind: number = Number((<HTMLSelectElement>document.getElementById('bottle-kind')).value);
+			const newEvent = {
+				kind: kind,
+				pubkey: pk,
+				created_at: Math.floor(Date.now() / 1000),
+				tags: [],
+				content: JSON.stringify(contentDict),
+				id: '',
+				sig: ''
+			};
+			newEvent.id = getEventHash(newEvent);
+			newEvent.sig = signEvent(newEvent, sk);
+			const pubs = pool.publish(bottleRelays, newEvent);
+			pubs.forEach(pub => {
+				pub.on('ok', () => {
+					console.log('Send Bottle: ', contentDict);
+				});
+				pub.on('failed', (reason: any) => {
+					console.log('Send Bottle Failed: ', reason);
+				});
+			});
+		});
 	}
+	if (hasDOM) {
+		//タブ切り替え
+		const radioBtns = <NodeListOf<HTMLInputElement>>document.querySelectorAll('.tabs > input[type="radio"]');
+		radioBtns.forEach(radio => {
+			radio.addEventListener('change', () => {
+				if (radio.checked) {
+					const kind: number = Number((<HTMLSelectElement>document.getElementById('bottle-kind')).value);
+					if (radio.id == 'global' || radio.id == 'following') {
+						subsBase.unsub();
+						subsBase = connectRelay(defaultRelays);
+					}
+					else if (radio.id == 'bottle') {
+						subsBase.unsub();
+						subsBase = connectBottleRelay(bottleRelays, kind);
+					}
+				}
+			});
+		});
+		(<HTMLSelectElement>document.getElementById('bottle-kind')).addEventListener('change', () => {
+			const kind: number = Number((<HTMLSelectElement>document.getElementById('bottle-kind')).value);
+			subsBase.unsub();
+			subsBase = connectBottleRelay(bottleRelays, kind);
+		})
+	}
+
 	//DirectSSTPを送信する関数
-	function sendDirectSSTP(note: string, name: string, display_name: string, picture: string) {
+	function sendDirectSSTP(note: string, ifGhost: string, name?: string, display_name?: string, picture?: string) {
 		const index = (<HTMLSelectElement>document.getElementById('sstp-target')).selectedIndex;
 		const hwnd = hwnds[index];
 		const script = '\\0' + note.replace(/\\/g, '\\\\').replace(/\n/g, '\\n') + '\\e';
-		(window as any).api.SendSSTP([hwnd, script, note.replace(/\n/g, '\\n'), name, display_name, picture]);
+		if (name) {
+			(window as any).api.SendSSTP([hwnd, script, ifGhost, note.replace(/\n/g, '\\n'), name, display_name, picture]);
+		}
+		else {
+			(window as any).api.SendSSTP([hwnd, note.replace(/\n/g, '\\n'), ifGhost]);
+		}
 	}
 
+	//初回接続
 	const pool = new SimplePool();
-	const hasDOM: boolean = typeof window === 'object';
-	//初回の接続
-	let subs = connectRelay(defaultRelays);//このsubsは全スコープで使い回す
+	subsBase = connectRelay(defaultRelays);
 	//ts-doneで実行する際はDOM操作はできない
 	if (hasDOM) {
 		//リレーをセレクトボックスに入れる
-		deployRelay(defaultRelays, additionalRelays);
+		deployRelay(defaultRelays, additionalRelays, bottleRelays, bottleKinds);
 		//公開鍵の入力に反応
 		const pubkeyInput = <HTMLInputElement>document.getElementById('pubkey');
 
@@ -197,9 +294,9 @@ import 'websocket-polyfill';
 			added = true;
 			const profile = JSON.parse(event2.content);
 			//プロフィールが見つかったnote
-			console.log('note text: ', event.content);
-			console.log('profile: ', profile);
-			console.log('note: ', event);
+//			console.log('note text: ', event.content);
+//			console.log('profile: ', profile);
+//			console.log('note: ', event);
 			//レンダリング
 			const dt = document.createElement('dt');
 			if (profile.picture != undefined) {
@@ -262,7 +359,7 @@ import 'websocket-polyfill';
 				const SSTPButton = document.createElement('button');
 				SSTPButton.textContent = 'Send SSTP';
 				SSTPButton.addEventListener('click', function(ev: MouseEvent) {
-					sendDirectSSTP(event.content, profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
+					sendDirectSSTP(event.content, '', profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
 				});
 				dt.appendChild(SSTPButton);
 			}
@@ -327,7 +424,7 @@ import 'websocket-polyfill';
 			}
 			//ゴーストにDirectSSTPを送信
 			if ((<HTMLInputElement>document.getElementById(tabID)).checked && isNewest) {
-				sendDirectSSTP(event.content, profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
+				sendDirectSSTP(event.content, '', profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
 			}
 		});
 		subs2.on('eose', () => {
@@ -335,28 +432,120 @@ import 'websocket-polyfill';
 		});
 	}
 
+	function makeBottleTL(tabID: string, event: any) {
+		const headers = JSON.parse(event.content);
+		const ifGhost = headers.IfGhost;
+		const script = headers.Script;
+		//レンダリング
+		const dt = document.createElement('dt');
+		dt.appendChild(document.createTextNode(ifGhost));
+		const time = document.createElement('time');
+		time.textContent = dtformat.format(new Date(event.created_at * 1000));
+		dt.appendChild(time);
+		dt.setAttribute('id', tabID + '-' + nip19.noteEncode(event.id));
+		dt.setAttribute('data-timestamp', event.created_at);
+		const dd = document.createElement('dd');
+		//SSTP Button
+		if (isElectron) {
+			const SSTPButton = document.createElement('button');
+			SSTPButton.textContent = 'Send SSTP';
+			SSTPButton.addEventListener('click', function(ev: MouseEvent) {
+				sendDirectSSTP(script, ifGhost);
+			});
+			dt.appendChild(SSTPButton);
+		}
+		//Script
+		dd.appendChild(document.createTextNode(script));
+		//relay
+		const ulFrom = <HTMLUListElement>document.createElement('ul');
+		ulFrom.className = 'relay';
+		pool.seenOn(event.id).forEach(relay => {
+			const liFrom = <HTMLLIElement>document.createElement('li');
+			liFrom.textContent = relay;
+			ulFrom.appendChild(liFrom);
+		});
+		dd.appendChild(ulFrom);
+		const dl = <HTMLElement>document.getElementById(tabID + '-tl');
+		//重複表示回避
+		if (document.getElementById(tabID + '-' + nip19.noteEncode(event.id))) {
+			return;
+		}
+		//時系列に表示する
+		const dts = dl.querySelectorAll('dt')
+		let appended: boolean = false;
+		let isNewest: boolean = false;
+		if (dts.length > 0) {
+			for (let i = 0; i < dts.length; i++) {
+				const t: number = Number(dts[i].dataset.timestamp);
+				if (t < event.created_at) {
+					dl.insertBefore(dd, dts[i]);
+					dl.insertBefore(dt, dd);
+					appended = true;
+					if (i == 0) {
+						isNewest = true;
+					}
+					break;
+				}
+			}
+			if (!appended) {
+				dl.appendChild(dt);
+				dl.appendChild(dd);
+				appended = true;
+			}
+		} else {
+			isNewest = true;
+			dl.prepend(dd);
+			dl.prepend(dt);
+		}
+		//ゴーストにDirectSSTPを送信
+		if ((<HTMLInputElement>document.getElementById(tabID)).checked && isNewest) {
+			sendDirectSSTP(script, ifGhost);
+		}
+	}
+
 	//リレーに繋ぐ
 	function connectRelay(relays: string[]) {
-		//現在時刻以降の投稿を取得
+		//30分以内の投稿を取得
 		const f: Filter = {
 			kinds: [1],
 			since: Math.floor(Date.now() / 1000) - 30 * 60,
 			limit: 20
 		};
-		const subs = pool.sub(relays, [f]);
+		const subsCon = pool.sub(relays, [f]);
 		if (hasDOM) {
 			const dl = <HTMLElement>document.getElementById('global-tl');
 			dl.innerHTML = '';
 		}
-		subs.on('event', (event: any) => {
+		subsCon.on('event', (event: any) => {
 			makeTL('global', relays, event);
 		});
 		//このsubsは全スコープで使い回す必要があるためreturnしてあげる
-		return subs;
+		return subsCon;
+	}
+	//ボトル用リレーに繋ぐ
+	function connectBottleRelay(relays: string[], kind: number) {
+		//1週間以内の投稿を取得
+		const f: Filter = {
+			kinds: [kind],
+			since: Math.floor(Date.now() / 1000) - 7 * 24 *60 * 60,
+			limit: 20
+		};
+		const subsCon = pool.sub(relays, [f]);
+		if (hasDOM) {
+			const dl = <HTMLElement>document.getElementById('bottle-tl');
+			dl.innerHTML = '';
+		}
+		subsCon.on('event', (event: any) => {
+			makeBottleTL('bottle', event);
+		});
+		subsCon.on('eose', () => {
+		});
+		//このsubsは全スコープで使い回す必要があるためreturnしてあげる
+		return subsCon;
 	}
 
 	//リレーをセレクトボックスに入れる(初回だけ呼ばれて終わり)
-	function deployRelay(enabledRelay: string[], disabledRelay: string[]) {
+	function deployRelay(enabledRelay: string[], disabledRelay: string[], bottleRelay: string[], bottleKinds: number[]) {
 		//デフォルトリレー配置
 		const enabledSelect = document.getElementById('enabled-relay');
 		enabledRelay.forEach(relay => {
@@ -372,6 +561,25 @@ import 'websocket-polyfill';
 			option.setAttribute('value', relay);
 			option.appendChild(document.createTextNode(relay));
 			disabledSelect?.appendChild(option);
+		});
+		//ボトルリレー配置
+		const bottleSelect = document.getElementById('bottle-relay');
+		bottleRelay.forEach(relay => {
+			const option = document.createElement('option');
+			option.setAttribute('value', relay);
+			option.appendChild(document.createTextNode(relay));
+			bottleSelect?.appendChild(option);
+		});
+		//ボトルKind配置
+		const kindSelect = document.getElementById('bottle-kind');
+		bottleKinds.forEach(kind => {
+			const option = document.createElement('option');
+			option.setAttribute('value', kind.toString());
+			option.appendChild(document.createTextNode(kind.toString()));
+			if (kind == defaultBottleKind) {
+				option.selected = true;
+			}
+			kindSelect?.appendChild(option);
 		});
 		//追加⇔削除ボタン押下時に入れ替え
 		document.getElementById('remove')?.addEventListener('click', () => replaceRelay('enabled-relay', 'disabled-relay'));
@@ -394,8 +602,8 @@ import 'websocket-polyfill';
 				newRelays.push(option.value);
 			});
 			//改めてリレーに繋ぎ直す
-			subs.unsub();
-			subs = connectRelay(newRelays);
+			subsBase.unsub();
+			subsBase = connectRelay(newRelays);
 		}
 	}
 })();

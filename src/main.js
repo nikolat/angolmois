@@ -56,6 +56,7 @@ let sstp_id = -1;
 ipcMain.on('ipc-SSTP-send', (event, data) => {
 	const hwnd = data[0];
 	const script = data[1];
+	const ifGhost = data[2];
 	let mes = ''
 		+ 'EXECUTE SAORI/1.0\n'
 		+ 'Charset: UTF-8\n'
@@ -66,12 +67,14 @@ ipcMain.on('ipc-SSTP-send', (event, data) => {
 		+ 'Argument3: NOTIFY SSTP/1.1\n'
 		+ 'Argument4: Charset: UTF-8\n'
 		+ 'Argument5: Sender: angolmois-electron\n'
-		+ 'Argument6: Event: OnNostr\n'
-		+ 'Argument7: Option: nobreak\n'
-		+ 'Argument8: Script: ' + script + '\n'
-		+ 'Argument9: Reference0: Nostr/0.1\n';
-	for (let i = 2; i < data.length; i++) {
-		mes += 'Argument' + (8 + i) + ': Reference' + (i - 1) + ': ' + data[i] + '\n';
+		+ 'Argument6: SecurityLevel: external\n'
+		+ 'Argument7: Event: OnNostr\n'
+		+ 'Argument8: Option: nobreak\n'
+		+ 'Argument9: IfGhost: ' + ifGhost + '\n'
+		+ 'Argument10: Script: ' + script + '\n'
+		+ 'Argument11: Reference0: ' + (ifGhost ? 'Nostr-Bottle/0.1' : 'Nostr/0.1') + '\n';
+	for (let i = 3; i < data.length; i++) {
+		mes += 'Argument' + (10 + i) + ': Reference' + (i - 2) + ': ' + data[i] + '\n';
 	}
 	mes += '\n';
 	sstp_mes += mes;
@@ -143,6 +146,7 @@ ipcMain.on('ipc-request-ghost-info', (event) => {
 		const lines = res.split('\r\n');
 		const hwnds = [];
 		const names = [];
+		const keronames = [];
 		for (let i = 0; i < lines.length; i++) {
 			if (lines[i].indexOf('.hwnd' + String.fromCharCode(1)) >= 0) {
 				const hwnd = lines[i].split(String.fromCharCode(1))[1].replace('\r', '');
@@ -151,6 +155,10 @@ ipcMain.on('ipc-request-ghost-info', (event) => {
 			else if (lines[i].indexOf('.name' + String.fromCharCode(1)) >= 0) {
 				const name = lines[i].split(String.fromCharCode(1))[1].replace('\r', '');
 				names.push(name);
+			}
+			else if (lines[i].indexOf('.keroname' + String.fromCharCode(1)) >= 0) {
+				const keroname = lines[i].split(String.fromCharCode(1))[1].replace('\r', '');
+				keronames.push(keroname);
 			}
 		}
 		const dt2 = new Date().toISOString().replace(/[T.:]/g, '-').replace(/Z/, '');
@@ -161,6 +169,6 @@ ipcMain.on('ipc-request-ghost-info', (event) => {
 				return;
 			}
 		});
-		mainWindow.webContents.send('ipc-receive-ghost-info', [names, hwnds]);
+		mainWindow.webContents.send('ipc-receive-ghost-info', [hwnds, names, keronames]);
 	});
 });

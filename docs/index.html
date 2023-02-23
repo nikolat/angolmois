@@ -25,6 +25,8 @@
 				<label class="tab_item" for="global">グローバル</label>
 				<input id="following" type="radio" name="tab_item">
 				<label class="tab_item" for="following">フォロー中</label>
+				<input id="bottle" type="radio" name="tab_item">
+				<label class="tab_item" for="bottle">ボトル</label>
 				<div class="tab_content" id="global_content">
 					<div class="tab_content_description">
 						<fieldset>
@@ -57,6 +59,29 @@
 							<dd id="profile-dd">None</dd>
 						</dl>
 						<dl id="following-tl">
+							<dt>説明</dt>
+							<dd>しばらくすると上に投稿が流れて来ます。</dd>
+						</dl>
+					</div>
+				</div>
+				<div class="tab_content" id="bottle_content">
+					<div class="tab_content_description">
+						<fieldset>
+							<legend>SSTP-Bottle送信</legend>
+							<label for="bottle-kind">送受信kind</label>
+							<select id="bottle-kind" name="bottle-kind">
+							</select>
+							<label for="bottle-relay">接続先リレー</label>
+							<select name="bottle-relay" id="bottle-relay" size="3">
+							</select>
+							<label for="bottle-ifghost">IfGhost</label>
+							<select name="bottle-ifghost" id="bottle-ifghost">
+							</select>
+							<label for="bottle-script">送信スクリプト</label>
+							<textarea id="bottle-script" rows="2" cols="30"></textarea>
+							<button id="bottle-send" disabled>送信</button>
+						</fieldset>
+						<dl id="bottle-tl">
 							<dt>説明</dt>
 							<dd>しばらくすると上に投稿が流れて来ます。</dd>
 						</dl>
