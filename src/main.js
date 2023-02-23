@@ -74,7 +74,7 @@ ipcMain.on('ipc-SSTP-send', (event, data) => {
 		+ 'Argument10: Script: ' + script + '\n'
 		+ 'Argument11: Reference0: ' + (ifGhost ? 'Nostr-Bottle/0.1' : 'Nostr/0.1') + '\n';
 	for (let i = 3; i < data.length; i++) {
-		mes += 'Argument' + (10 + i) + ': Reference' + (i - 2) + ': ' + data[i] + '\n';
+		mes += 'Argument' + (9 + i) + ': Reference' + (i - 2) + ': ' + data[i] + '\n';
 	}
 	mes += '\n';
 	sstp_mes += mes;
