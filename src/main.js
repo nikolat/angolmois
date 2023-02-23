@@ -59,37 +59,37 @@ ipcMain.on('ipc-SSTP-send', (event, data) => {
 	const script = data[1];
 	const ifGhost = data[2];
 	let mes = ''
-        + 'NOTIFY SSTP/1.1\r\n'
-        + 'Charset: UTF-8\r\n'
-        + 'Sender: angolmois-electron\r\n'
-        + 'SecurityLevel: external\r\n'
-        + 'Event: OnNostr\r\n'
-        + 'Option: nobreak\r\n'
-        + 'ReceiverGhostHWnd: ' + hwnd + '\r\n'
-        + 'IfGhost: ' + ifGhost + '\r\n'
-        + 'Script: ' + script + '\r\n';
-    for (let i = 3; i < data.length; i++) {
-            mes += 'Reference' + (i - 2) + ': ' + data[i] + '\r\n';
-    }
+		+ 'NOTIFY SSTP/1.1\r\n'
+		+ 'Charset: UTF-8\r\n'
+		+ 'Sender: angolmois-electron\r\n'
+		+ 'SecurityLevel: external\r\n'
+		+ 'Event: OnNostr\r\n'
+		+ 'Option: nobreak\r\n'
+		+ 'ReceiverGhostHWnd: ' + hwnd + '\r\n'
+		+ 'IfGhost: ' + ifGhost + '\r\n'
+		+ 'Script: ' + script + '\r\n';
+	for (let i = 3; i < data.length; i++) {
+			mes += 'Reference' + (i - 2) + ': ' + data[i] + '\r\n';
+	}
 
 
-    mes += '\r\n';
+	mes += '\r\n';
 	sstp_mes = mes;
 	clearTimeout(sstp_id);
 	sstp_id = setTimeout(execSSTP, 500);
 });
 
 const execSSTP = () => {
-    const client = net.connect('9801', '127.0.0.1', () => {
-        client.write(sstp_mes);
-    });
-    client.on('data', data => {
-        // do something
-        client.destroy();
-    });
-    client.on('error', error => {
-        // 何かエラーメッセージを表示した方がいいけど良い方法が思いつかない
-    });
+	const client = net.connect('9801', '127.0.0.1', () => {
+		client.write(sstp_mes);
+	});
+	client.on('data', data => {
+		// do something
+		client.destroy();
+	});
+	client.on('error', error => {
+		// 何かエラーメッセージを表示した方がいいけど良い方法が思いつかない
+	});
 };
 
 //FMOから起動中のゴースト情報を取得
@@ -100,10 +100,10 @@ ipcMain.on('ipc-request-ghost-info', (event) => {
 		+ 'SecurityLevel: external\r\n'
 		+ 'Command: GetFMO\r\n'
 		+ '\r\n';
-    const client = net.connect('9801', '127.0.0.1', () => {
-        client.write(mes1);
-    });
-    client.on('data', data => {
+	const client = net.connect('9801', '127.0.0.1', () => {
+		client.write(mes1);
+	});
+	client.on('data', data => {
 		const res = data.toString();
 		const lines = res.split('\r\n');
 		const hwnds = [];
@@ -124,9 +124,9 @@ ipcMain.on('ipc-request-ghost-info', (event) => {
 			}
 		}
 		mainWindow.webContents.send('ipc-receive-ghost-info', [hwnds, names, keronames]);
-        client.destroy();
-    });
-    client.on('error', error => {
-        // 何かエラーメッセージを表示した方がいいけど良い方法が思いつかない
-    });
+		client.destroy();
+	});
+	client.on('error', error => {
+		// 何かエラーメッセージを表示した方がいいけど良い方法が思いつかない
+	});
 });
