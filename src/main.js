@@ -52,8 +52,6 @@ app.on('window-all-closed', () => {
 	}
 });
 
-let sstp_mes = '';
-let sstp_id = -1;
 ipcMain.on('ipc-SSTP-send', (event, data) => {
 	const hwnd = data[0];
 	const script = data[1];
@@ -71,17 +69,9 @@ ipcMain.on('ipc-SSTP-send', (event, data) => {
 	for (let i = 3; i < data.length; i++) {
 		mes += 'Reference' + (i - 2) + ': ' + data[i] + '\r\n';
 	}
-
-
 	mes += '\r\n';
-	sstp_mes = mes;
-	clearTimeout(sstp_id);
-	sstp_id = setTimeout(execSSTP, 500);
-});
-
-const execSSTP = () => {
 	const client = net.connect('9801', '127.0.0.1', () => {
-		client.write(sstp_mes);
+		client.write(mes);
 	});
 	client.on('data', data => {
 		// do something
@@ -90,7 +80,7 @@ const execSSTP = () => {
 	client.on('error', error => {
 		// 何かエラーメッセージを表示した方がいいけど良い方法が思いつかない
 	});
-};
+});
 
 //FMOから起動中のゴースト情報を取得
 ipcMain.on('ipc-request-ghost-info', (event) => {
