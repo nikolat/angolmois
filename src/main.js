@@ -3,6 +3,7 @@ const { app, ipcMain, BrowserWindow, shell } = require('electron');
 const childProcess = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const net = require('net');
 
 let mainWindow;
 
@@ -58,91 +59,52 @@ ipcMain.on('ipc-SSTP-send', (event, data) => {
 	const script = data[1];
 	const ifGhost = data[2];
 	let mes = ''
-		+ 'EXECUTE SAORI/1.0\n'
-		+ 'Charset: UTF-8\n'
-		+ 'SecurityLevel: Local\n'
-		+ 'Argument0: DSSTPSend\n'
-		+ 'Argument1: ' + hwnd + '\n'
-		+ 'Argument2: result\n'
-		+ 'Argument3: NOTIFY SSTP/1.1\n'
-		+ 'Argument4: Charset: UTF-8\n'
-		+ 'Argument5: Sender: angolmois-electron\n'
-		+ 'Argument6: SecurityLevel: external\n'
-		+ 'Argument7: Event: OnNostr\n'
-		+ 'Argument8: Option: nobreak\n'
-		+ 'Argument9: IfGhost: ' + ifGhost + '\n'
-		+ 'Argument10: Script: ' + script + '\n'
-		+ 'Argument11: Reference0: ' + (ifGhost ? 'Nostr-Bottle/0.1' : 'Nostr/0.1') + '\n';
-	for (let i = 3; i < data.length; i++) {
-		mes += 'Argument' + (9 + i) + ': Reference' + (i - 2) + ': ' + data[i] + '\n';
-	}
-	mes += '\n';
-	sstp_mes += mes;
+        + 'NOTIFY SSTP/1.1\r\n'
+        + 'Charset: UTF-8\r\n'
+        + 'Sender: angolmois-electron\r\n'
+        + 'SecurityLevel: external\r\n'
+        + 'Event: OnNostr\r\n'
+        + 'Option: nobreak\r\n'
+        + 'ReceiverGhostHWnd: ' + hwnd + '\r\n'
+        + 'IfGhost: ' + ifGhost + '\r\n'
+        + 'Script: ' + script + '\r\n';
+    for (let i = 3; i < data.length; i++) {
+            mes += 'Reference' + (i - 2) + ': ' + data[i] + '\r\n';
+    }
+
+
+    mes += '\r\n';
+	sstp_mes = mes;
 	clearTimeout(sstp_id);
 	sstp_id = setTimeout(execSSTP, 500);
 });
 
 const execSSTP = () => {
-	const dt1 = new Date().toISOString().replace(/[T.:]/g, '-').replace(/Z/, '');
-	const saoridir = `${__dirname}\\saori\\`
-	const path1 = `${saoridir}log\\sstp_${dt1}_request.txt`;
-	fs.writeFile(path1, sstp_mes, (error) => {
-		sstp_mes = '';
-		if (error != null) {
-			console.error('ERROR', error);
-			return;
-		}
-		childProcess.exec(`${saoridir}shioricaller.exe ${saoridir}HandUtil.dll ${saoridir} < ${path1}`, (error, stdout, stderr) => {
-			const dt2 = new Date().toISOString().replace(/[T.:]/g, '-').replace(/Z/, '');
-			if (error) {
-				console.error('ERROR', error);
-				const path2 = `${saoridir}log\\sstp_${dt2}_error.txt`;
-				fs.writeFile(path2, error.message, (err) => {
-				if (err != null) {
-					console.error('ERROR', err);
-					return;
-				}
-				});
-				return;
-			}
-			const path2 = `${saoridir}log\\sstp_${dt2}_response.txt`;
-			fs.writeFile(path2, stdout, (error) => {
-				if (error != null) {
-					console.error('ERROR', error);
-					return;
-				}
-			});
-			return stdout;
-		});
-	});
+    const client = net.connect('9801', '127.0.0.1', () => {
+        client.write(sstp_mes);
+    });
+    client.on('data', data => {
+        // do something
+        client.destroy();
+    });
+    client.on('error', error => {
+        // 何かエラーメッセージを表示した方がいいけど良い方法が思いつかない
+    });
 };
 
 //FMOから起動中のゴースト情報を取得
 ipcMain.on('ipc-request-ghost-info', (event) => {
-	const saoridir = `${__dirname}\\saori\\`
-	const path0 = `${saoridir}log\\`;
-	fs.rmSync(path0, { recursive: true, force: true });
-	fs.mkdirSync(path0);
 	const mes1 = ''
-		+ 'EXECUTE SAORI/1.0\n'
-		+ 'Charset: UTF-8\n'
-		+ 'SecurityLevel: Local\n'
-		+ 'Argument0: GetFMO\n'
-		+ 'Argument1: SakuraUnicode\n'
-		+ '\n';
-	const dt1 = new Date().toISOString().replace(/[T.:]/g, '-').replace(/Z/, '');
-	const path1 = `${saoridir}log\\sstp_${dt1}_request.txt`;
-	fs.writeFile(path1, mes1, (error) => {
-		if (error != null) {
-			console.error('ERROR', error);
-			return;
-		}
-	});
-	childProcess.exec(`${saoridir}shioricaller.exe ${saoridir}HandUtil.dll ${saoridir} < ${path1}`, (error, stdout, stderr) => {
-		if(error) {
-			return console.error('ERROR', error);
-		}
-		const res = stdout;
+		+ 'EXECUTE SSTP/1.1\r\n'
+		+ 'Charset: UTF-8\r\n'
+		+ 'SecurityLevel: external\r\n'
+		+ 'Command: GetFMO\r\n'
+		+ '\r\n';
+    const client = net.connect('9801', '127.0.0.1', () => {
+        client.write(mes1);
+    });
+    client.on('data', data => {
+		const res = data.toString();
 		const lines = res.split('\r\n');
 		const hwnds = [];
 		const names = [];
@@ -161,14 +123,10 @@ ipcMain.on('ipc-request-ghost-info', (event) => {
 				keronames.push(keroname);
 			}
 		}
-		const dt2 = new Date().toISOString().replace(/[T.:]/g, '-').replace(/Z/, '');
-		const path2 = `${saoridir}log\\sstp_${dt2}_response.txt`;
-		fs.writeFile(path2, res, (error) => {
-			if (error != null) {
-				console.error('ERROR', error);
-				return;
-			}
-		});
 		mainWindow.webContents.send('ipc-receive-ghost-info', [hwnds, names, keronames]);
-	});
+        client.destroy();
+    });
+    client.on('error', error => {
+        // 何かエラーメッセージを表示した方がいいけど良い方法が思いつかない
+    });
 });
