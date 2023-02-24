@@ -65,7 +65,8 @@ ipcMain.on('ipc-SSTP-send', (event, data) => {
 		+ 'Option: nobreak\r\n'
 		+ 'ReceiverGhostHWnd: ' + hwnd + '\r\n'
 		+ 'IfGhost: ' + ifGhost + '\r\n'
-		+ 'Script: ' + script + '\r\n';
+		+ 'Script: ' + script + '\r\n'
+		+ 'Reference0: ' + (ifGhost ? 'Nostr-Bottle/0.1' : 'Nostr/0.1') + '\r\n';
 	for (let i = 3; i < data.length; i++) {
 		mes += 'Reference' + (i - 2) + ': ' + data[i] + '\r\n';
 	}
