@@ -1,6 +1,6 @@
 # angolmois-electron
-Nostr日本語リレーから投稿を取得してグローバルタイムラインを表示するWindowsアプリです。  
-投稿を表示すると同時に伺か互換ベースウェア(SSTPサーバー)にDirectSSTPを送信し、ゴースト(キャラクター)に投稿を喋らせます。  
+Nostrリレーから投稿を取得して表示するアプリです。  
+投稿を表示すると同時に伺か互換ベースウェア(SSTPサーバー)にSSTPを送信し、ゴースト(キャラクター)に投稿を喋らせます。  
 
 ![プレビュー/ノーマル](image/preview1.gif "プレビュー/ノーマル")
 
@@ -15,7 +15,6 @@ Nostr日本語リレーから投稿を取得してグローバルタイムライ
 
 ## ゴースト側のカスタマイズ(伺か経験者向け)
 angolmoisは[SSTP](http://ssp.shillest.net/ukadoc/manual/spec_sstp.html)によりSSTPサーバーと通信を行います。  
-(厳密にはDirectSSTPですが詳細は省きます)  
 angolmoisからは指定したゴーストに対して以下のようなSSTPが送信されます。
 ```
 NOTIFY SSTP/1.1
@@ -76,9 +75,3 @@ OnNostr
 
 ## What is Ukagaka?
 - [What is an Ukagaka/Ghost? (or FLELE) - YouTube](https://www.youtube.com/watch?v=h0CHB2M5eAE)
-
-## Windows限定なの？
-Web上でも[見るだけなら可能](https://nikolat.github.io/angolmois-electron/)ですがDirectSSTP送信機能は利用できません。  
-Windows以外のOSでSSPを起動する方法は以下を参照してください。
-- [Wine上でSSPを使い(first)さくらを起動する](https://qiita.com/ponapalt/items/c2c30b7bdb3c325a31f7)
-- [【Big sur,Catalina対応】MacでWineを使って伺かを動かす。](http://c-lege.hacca.jp/ukgk/ukgk_at_mac.html)
