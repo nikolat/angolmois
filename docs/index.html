@@ -67,13 +67,23 @@
 				<div class="tab_content" id="bottle_content">
 					<div class="tab_content_description">
 						<fieldset>
-							<legend>SSTP-Bottle送信</legend>
+							<legend>SSTP-Bottle送受信先</legend>
 							<label for="bottle-kind">送受信kind</label>
 							<select id="bottle-kind" name="bottle-kind">
 							</select>
 							<label for="bottle-relay">接続先リレー</label>
 							<select name="bottle-relay" id="bottle-relay" size="3">
 							</select>
+						</fieldset>
+						<fieldset>
+							<legend>認証</legend>
+							<label for="npub-nip-07">あなたの公開鍵</label>
+							<input id="npub-nip-07" name="npub-nip-07" type="text" size="63" minlength="63" maxlength="63" readonly>
+							<label for="use-nip-07">NIP-07を使用する</label>
+							<input id="use-nip-07" name="use-nip-07" type="checkbox">
+						</fieldset>
+						<fieldset>
+							<legend>送信</legend>
 							<label for="bottle-ifghost">IfGhost</label>
 							<select name="bottle-ifghost" id="bottle-ifghost">
 							</select>
