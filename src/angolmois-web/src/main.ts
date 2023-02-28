@@ -52,13 +52,12 @@ declare var window: Window;
 (function (){
 	const defaultRelays = [
 		'wss://relay-jp.nostr.wirednet.jp',
-		'wss://nostr.holybea.com',
 		'wss://nostr.h3z.jp',
+		'wss://nostr-relay.nokotaro.com',
+		'wss://nostr.holybea.com'
 	];
 	const additionalRelays = [
 		'wss://relay.nostr.wirednet.jp',
-		'wss://nostr-relay.nokotaro.com',
-		'wss://relay.nostr.or.jp',
 		'wss://relay.damus.io',
 		'wss://relay.snort.social'
 	];
@@ -146,13 +145,11 @@ declare var window: Window;
 			newEvent.id = getEventHash(newEvent);
 			newEvent.sig = signEvent(newEvent, sk);
 			const pubs = pool.publish(bottleRelays, newEvent);
-			pubs.forEach(pub => {
-				pub.on('ok', () => {
-					console.log('Send Bottle: ', contentDict);
-				});
-				pub.on('failed', (reason: any) => {
-					console.log('Send Bottle Failed: ', reason);
-				});
+			pubs.on('ok', () => {
+				console.log('Send Bottle: ', contentDict);
+			});
+			pubs.on('failed', (reason: any) => {
+				console.log('Send Bottle Failed: ', reason);
 			});
 		});
 	}
