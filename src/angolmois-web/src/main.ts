@@ -171,12 +171,78 @@ declare var window: Window & typeof globalThis;
 						await (async function() {
 							const npub = await window.nostr?.getPublicKey()
 							if (npub !== undefined) {
+								//公開鍵表示
 								npubNip07.value = nip19.npubEncode(npub);
+								//プロフィール表示
+								const f0: Filter = {
+									kinds: [0],
+									authors: [npub],
+									limit: 1
+								};
+								//グローバルのリレーとフォロー中リレーとボトル用リレーから取得する
+								const tRelays: string[] = [];
+								Array.from((<HTMLSelectElement>document.getElementById('enabled-relay')).options).forEach(option => {
+									tRelays.push(option.value);
+								});
+								Array.from((<HTMLSelectElement>document.getElementById('following-relay')).options).forEach(option => {
+									tRelays.push(option.value);
+								});
+								Array.from((<HTMLSelectElement>document.getElementById('bottle-relay')).options).forEach(option => {
+									tRelays.push(option.value);
+								});
+								const subsF0 = pool.sub(tRelays, [f0]);
+								subsF0.on('event', (eventF0: Event) => {
+									const c: any = JSON.parse(eventF0.content);
+									const dt = <HTMLElement>document.getElementById('bottle-profile-dt');
+									dt.innerHTML = '';
+									if (c.picture != undefined) {
+										const img = document.createElement('img');
+										img.src = c.picture;
+										img.alt = c.name;
+										img.width = iconSize;
+										img.height = iconSize;
+										dt.appendChild(img);
+									}
+									dt.appendChild(document.createTextNode(c.display_name));
+									const a = document.createElement('a');
+									a.setAttribute('href', 'https://iris.to/' + nip19.npubEncode(eventF0.pubkey));
+									a.textContent = '@' + c.name;
+									dt.appendChild(a);
+									const dd = <HTMLElement>document.getElementById('bottle-profile-dd');
+									dd.innerHTML = '';
+									dd.appendChild(document.createTextNode(c.about));
+									//TLにアイコン表示
+									if (c.picture != undefined) {
+										const dts = <NodeListOf<HTMLElement>>document.querySelectorAll('#bottle-tl > dt');
+										dts.forEach(element => {
+											//自分の投稿だった場合
+											if (element.dataset.npub == nip19.npubEncode(npub)) {
+												const img = document.createElement('img');
+												img.src = c.picture;
+												img.alt = c.name;
+												img.width = iconSize;
+												img.height = iconSize;
+												element.appendChild(img);
+											}
+										});
+									}
+								});
+								subsF0.on('eose', () => {
+									subsF0.unsub();
+								});
 							}
 						})();
 					}
 					else {
 						npubNip07.value = '';
+						const dt = <HTMLElement>document.getElementById('bottle-profile-dt');
+						dt.innerHTML = '';
+						const dd = <HTMLElement>document.getElementById('bottle-profile-dd');
+						dd.innerHTML = '';
+						const dts = <NodeListOf<HTMLElement>>document.querySelectorAll('#bottle-tl > dt > img');
+						dts.forEach(element => {
+							element.remove();
+						});
 					}
 				});
 			}
@@ -495,6 +561,15 @@ declare var window: Window & typeof globalThis;
 		dt.appendChild(time);
 		dt.setAttribute('id', tabID + '-' + nip19.noteEncode(event.id));
 		dt.setAttribute('data-timestamp', event.created_at.toString());
+		dt.setAttribute('data-npub', nip19.npubEncode(event.pubkey));
+		//自身の投稿の場合
+		if (nip19.npubEncode(event.pubkey) == (<HTMLInputElement>document.getElementById('npub-nip-07')).value) {
+			//認証済みならアイコンをコピー
+			const imgs = <NodeListOf<HTMLImageElement>>document.querySelectorAll('#bottle-profile-dt > img');
+			imgs.forEach(element => {
+				dt.appendChild(element.cloneNode(false));
+			});
+		}
 		const dd = document.createElement('dd');
 		//SSTP Button
 		if (isElectron) {
