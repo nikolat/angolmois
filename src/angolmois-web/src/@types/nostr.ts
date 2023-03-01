@@ -12,7 +12,7 @@ export type NostrEvent = {
 	created_at: number;
 };
 
-type NostrAPI = {
+export type NostrAPI = {
 	/** returns a public key as hex */
 	getPublicKey(): Promise<string>;
 	/** takes an event object, adds `id`, `pubkey` and `sig` and returns it */
@@ -31,8 +31,3 @@ type NostrAPI = {
 		decrypt(pubkey: string, ciphertext: string): Promise<string>;
 	};
 };
-
-interface Window {
-	nostr?: NostrAPI;
-}
-export declare var window: Window;

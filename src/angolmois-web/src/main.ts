@@ -9,7 +9,12 @@ import {
 	signEvent
 } from 'nostr-tools';
 import 'websocket-polyfill';
-import { window } from './@types/nostr';
+import { NostrAPI, NostrEvent } from './@types/nostr';
+interface Window {
+	nostr?: NostrAPI;
+	api?: any;
+}
+export declare var window: Window;
 
 (function (){
 	const defaultRelays = [
@@ -31,7 +36,7 @@ import { window } from './@types/nostr';
 	const defaultBottleKind = 9801;
 	const iconSize = 50;
 	const hasDOM: boolean = typeof window === 'object';
-	const isElectron: boolean = hasDOM ? (window as any).api != undefined : false;
+	const isElectron: boolean = hasDOM ? window.api != undefined : false;
 	const dtformat = new Intl.DateTimeFormat('ja-jp', {
 		year: 'numeric',
 		month: '2-digit',
@@ -51,7 +56,7 @@ import { window } from './@types/nostr';
 	let keroNames: string[] = [];
 	let hwnds: string[] = [];
 	if (isElectron) {
-		(window as any).api.ReceiveGhostInfo((data: string[][]) => {
+		window.api.ReceiveGhostInfo((data: string[][]) => {
 			hwnds = data[0];
 			ghostNames = data[1];
 			keroNames = data[2];
@@ -75,9 +80,9 @@ import { window } from './@types/nostr';
 			}
 			bottleSend.disabled = ghostNames.length == 0;
 		});
-		(window as any).api.RequestGhostInfo();
+		window.api.RequestGhostInfo();
 		const refreshButton = <HTMLButtonElement>document.getElementById('refresh');
-		refreshButton.addEventListener('click', function(){(window as any).api.RequestGhostInfo()});
+		refreshButton.addEventListener('click', function(){window.api.RequestGhostInfo()});
 		//Bottle送信
 		const bottleSend = <HTMLButtonElement>document.getElementById('bottle-send');
 		bottleSend.addEventListener('click', function(ev: MouseEvent) {
@@ -138,7 +143,7 @@ import { window } from './@types/nostr';
 			subsBase.unsub();
 			subsBase = connectBottleRelay(bottleRelays, kind);
 		});
-		(window as any).addEventListener('load', () => {
+		(window as EventTarget).addEventListener('load', () => {
 			//NIP-07認証を使用するチェック
 			const useNip07 = <HTMLInputElement>document.getElementById('use-nip-07');
 			const npubNip07 = <HTMLInputElement>document.getElementById('npub-nip-07');
@@ -146,8 +151,10 @@ import { window } from './@types/nostr';
 				useNip07.addEventListener('change', async() => {
 					if (useNip07.checked) {
 						await (async function() {
-							const npub: any = await window.nostr?.getPublicKey()
-							npubNip07.value = nip19.npubEncode(npub);
+							const npub = await window.nostr?.getPublicKey()
+							if (npub !== undefined) {
+								npubNip07.value = nip19.npubEncode(npub);
+							}
 						})();
 					}
 					else {
@@ -168,10 +175,10 @@ import { window } from './@types/nostr';
 		const hwnd = hwnds[index];
 		const script = '\\0' + note.replace(/\\/g, '\\\\').replace(/\n/g, '\\n') + '\\e';
 		if (name) {
-			(window as any).api.SendSSTP([hwnd, script, ifGhost, note.replace(/\n/g, '\\n'), name, display_name, picture]);
+			window.api.SendSSTP([hwnd, script, ifGhost, note.replace(/\n/g, '\\n'), name, display_name, picture]);
 		}
 		else {
-			(window as any).api.SendSSTP([hwnd, note.replace(/\n/g, '\\n'), ifGhost]);
+			window.api.SendSSTP([hwnd, note.replace(/\n/g, '\\n'), ifGhost]);
 		}
 	}
 
@@ -210,7 +217,7 @@ import { window } from './@types/nostr';
 			});
 			const subsF3 = pool.sub(Array.from(new Set(tRelays)), [f3]);
 			let gotF3 = false;
-			subsF3.on('event', (eventF3: any) => {
+			subsF3.on('event', (eventF3: NostrEvent) => {
 				if (gotF3) {
 					return;
 				}
@@ -246,7 +253,7 @@ import { window } from './@types/nostr';
 					limit: 1
 				};
 				const subsF0 = pool.sub(relaysa, [f0]);
-				subsF0.on('event', (eventF0: any) => {
+				subsF0.on('event', (eventF0: NostrEvent) => {
 					const c: any = JSON.parse(eventF0.content);
 					const dt = <HTMLElement>document.getElementById('profile-dt');
 					dt.innerHTML = '';
@@ -280,7 +287,7 @@ import { window } from './@types/nostr';
 				const subsF1 = pool.sub(relaysa, [f1]);
 				const dl = <HTMLElement>document.getElementById('following-tl');
 				dl.innerHTML = '';
-				subsF1.on('event', (eventF1: any) => {
+				subsF1.on('event', (eventF1: NostrEvent) => {
 					makeTL('following', relaysa, eventF1);
 				});
 				subsF1.on('eose', () => {
@@ -297,7 +304,7 @@ import { window } from './@types/nostr';
 	//逆引きできるよう投稿者の情報をためておく
 	const pubkeys: { [key: string]: string; } = {};//idからpubkeyを逆引きするためのもの
 	const names: { [key: string]: string; } = {};//pubkeyからプロフィール情報を逆引きするためのもの
-	function makeTL(tabID: string, relays: string[], event: any) {
+	function makeTL(tabID: string, relays: string[], event: NostrEvent) {
 		//投稿者のプロフィールを取得
 		const f2: Filter = {
 			kinds: [0],
@@ -305,7 +312,10 @@ import { window } from './@types/nostr';
 		};
 		const subs2 = pool.sub(relays, [f2]);
 		let added: boolean = false;
-		subs2.on('event', (event2: any) => {
+		subs2.on('event', (event2: NostrEvent) => {
+			if (!event.id) {
+				return;
+			}
 			//保存時期が異なるプロフィールがそれぞれのリレーから送られる場合がある
 			if (added) {
 				return;
@@ -336,14 +346,14 @@ import { window } from './@types/nostr';
 			time.textContent = dtformat.format(new Date(event.created_at * 1000));
 			dt.appendChild(time);
 			dt.setAttribute('id', tabID + '-' + nip19.noteEncode(event.id));
-			dt.setAttribute('data-timestamp', event.created_at);
+			dt.setAttribute('data-timestamp', event.created_at.toString());
 			const dd = document.createElement('dd');
 			let hasReply: boolean = false;
 			let hasMention: boolean = false;
 			let in_reply_to: string = '';
 			let mention_to: string = '';
 			const mentions: string[] = [];
-			event.tags.forEach((tag: any) => {
+			event.tags.forEach(tag => {
 				if (tag[0] == 'e') {
 					hasReply = true;
 					in_reply_to = tag[1];
@@ -452,7 +462,10 @@ import { window } from './@types/nostr';
 		});
 	}
 
-	function makeBottleTL(tabID: string, event: any) {
+	function makeBottleTL(tabID: string, event: NostrEvent) {
+		if (!event.id) {
+			return;
+		}
 		const headers = JSON.parse(event.content);
 		const ifGhost = headers.IfGhost;
 		const script = headers.Script;
@@ -463,7 +476,7 @@ import { window } from './@types/nostr';
 		time.textContent = dtformat.format(new Date(event.created_at * 1000));
 		dt.appendChild(time);
 		dt.setAttribute('id', tabID + '-' + nip19.noteEncode(event.id));
-		dt.setAttribute('data-timestamp', event.created_at);
+		dt.setAttribute('data-timestamp', event.created_at.toString());
 		const dd = document.createElement('dd');
 		//SSTP Button
 		if (isElectron) {
@@ -536,7 +549,7 @@ import { window } from './@types/nostr';
 			const dl = <HTMLElement>document.getElementById('global-tl');
 			dl.innerHTML = '';
 		}
-		subsCon.on('event', (event: any) => {
+		subsCon.on('event', (event: NostrEvent) => {
 			makeTL('global', relays, event);
 		});
 		//このsubsは全スコープで使い回す必要があるためreturnしてあげる
@@ -555,7 +568,7 @@ import { window } from './@types/nostr';
 			const dl = <HTMLElement>document.getElementById('bottle-tl');
 			dl.innerHTML = '';
 		}
-		subsCon.on('event', (event: any) => {
+		subsCon.on('event', (event: NostrEvent) => {
 			makeBottleTL('bottle', event);
 		});
 		subsCon.on('eose', () => {
