@@ -6,24 +6,27 @@ import {
 	generatePrivateKey,
 	getPublicKey,
 	getEventHash,
-	signEvent
+	signEvent,
+	UnsignedEvent,
+	Event,
+	Kind
 } from 'nostr-tools';
 import 'websocket-polyfill';
-import { NostrAPI, NostrEvent } from './@types/nostr';
+import { NostrAPI } from './@types/nostr';
 interface Window {
 	nostr?: NostrAPI;
 	api?: any;
 }
-export declare var window: Window;
+declare var window: Window & typeof globalThis;
 
 (function (){
 	const defaultRelays = [
 		'wss://relay-jp.nostr.wirednet.jp',
 		'wss://nostr.h3z.jp',
-		'wss://nostr-relay.nokotaro.com',
 		'wss://nostr.holybea.com'
 	];
 	const additionalRelays = [
+		'wss://nostr-relay.nokotaro.com',
 		'wss://relay.nostr.wirednet.jp',
 		'wss://relay.damus.io',
 		'wss://relay.snort.social'
@@ -36,7 +39,7 @@ export declare var window: Window;
 	const defaultBottleKind = 9801;
 	const iconSize = 50;
 	const hasDOM: boolean = typeof window === 'object';
-	const isElectron: boolean = hasDOM ? window.api != undefined : false;
+	const isElectron: boolean = hasDOM && (window.api !== undefined);
 	const dtformat = new Intl.DateTimeFormat('ja-jp', {
 		year: 'numeric',
 		month: '2-digit',
@@ -85,7 +88,7 @@ export declare var window: Window;
 		refreshButton.addEventListener('click', function(){window.api.RequestGhostInfo()});
 		//Bottle送信
 		const bottleSend = <HTMLButtonElement>document.getElementById('bottle-send');
-		bottleSend.addEventListener('click', function(ev: MouseEvent) {
+		bottleSend.addEventListener('click', async function(ev: MouseEvent) {
 			const bottleScript = <HTMLTextAreaElement>document.getElementById('bottle-script');
 			if (bottleScript == null) {
 				return;
@@ -99,18 +102,33 @@ export declare var window: Window;
 				'Script': script,
 				'IfGhost': ifGhost
 			};
-			const kind: number = Number((<HTMLSelectElement>document.getElementById('bottle-kind')).value);
-			const newEvent = {
+			const kind: Kind = Number((<HTMLSelectElement>document.getElementById('bottle-kind')).value);
+			const baseEvent: UnsignedEvent = {
 				kind: kind,
-				pubkey: pk,
+				pubkey: '',
 				created_at: Math.floor(Date.now() / 1000),
 				tags: [],
-				content: JSON.stringify(contentDict),
-				id: '',
-				sig: ''
+				content: JSON.stringify(contentDict)
 			};
-			newEvent.id = getEventHash(newEvent);
-			newEvent.sig = signEvent(newEvent, sk);
+			let newEvent: Event;
+			const useNip07 = <HTMLInputElement>document.getElementById('use-nip-07');
+			if (useNip07.checked && window.nostr) {
+				newEvent = await window.nostr.signEvent(baseEvent);
+			}
+			else {
+				baseEvent.pubkey = pk;
+				newEvent = {
+					kind: baseEvent.kind,
+					pubkey: baseEvent.pubkey,
+					created_at: baseEvent.created_at,
+					tags: baseEvent.tags,
+					content: baseEvent.content,
+					id: '',
+					sig: ''
+				};
+				newEvent.id = getEventHash(baseEvent);
+				newEvent.sig = signEvent(baseEvent, sk);
+			}
 			const pubs = pool.publish(bottleRelays, newEvent);
 			pubs.on('ok', () => {
 				console.log('Send Bottle: ', contentDict);
@@ -217,7 +235,7 @@ export declare var window: Window;
 			});
 			const subsF3 = pool.sub(Array.from(new Set(tRelays)), [f3]);
 			let gotF3 = false;
-			subsF3.on('event', (eventF3: NostrEvent) => {
+			subsF3.on('event', (eventF3: Event) => {
 				if (gotF3) {
 					return;
 				}
@@ -253,7 +271,7 @@ export declare var window: Window;
 					limit: 1
 				};
 				const subsF0 = pool.sub(relaysa, [f0]);
-				subsF0.on('event', (eventF0: NostrEvent) => {
+				subsF0.on('event', (eventF0: Event) => {
 					const c: any = JSON.parse(eventF0.content);
 					const dt = <HTMLElement>document.getElementById('profile-dt');
 					dt.innerHTML = '';
@@ -287,7 +305,7 @@ export declare var window: Window;
 				const subsF1 = pool.sub(relaysa, [f1]);
 				const dl = <HTMLElement>document.getElementById('following-tl');
 				dl.innerHTML = '';
-				subsF1.on('event', (eventF1: NostrEvent) => {
+				subsF1.on('event', (eventF1: Event) => {
 					makeTL('following', relaysa, eventF1);
 				});
 				subsF1.on('eose', () => {
@@ -304,7 +322,7 @@ export declare var window: Window;
 	//逆引きできるよう投稿者の情報をためておく
 	const pubkeys: { [key: string]: string; } = {};//idからpubkeyを逆引きするためのもの
 	const names: { [key: string]: string; } = {};//pubkeyからプロフィール情報を逆引きするためのもの
-	function makeTL(tabID: string, relays: string[], event: NostrEvent) {
+	function makeTL(tabID: string, relays: string[], event: Event) {
 		//投稿者のプロフィールを取得
 		const f2: Filter = {
 			kinds: [0],
@@ -312,7 +330,7 @@ export declare var window: Window;
 		};
 		const subs2 = pool.sub(relays, [f2]);
 		let added: boolean = false;
-		subs2.on('event', (event2: NostrEvent) => {
+		subs2.on('event', (event2: Event) => {
 			if (!event.id) {
 				return;
 			}
@@ -462,7 +480,7 @@ export declare var window: Window;
 		});
 	}
 
-	function makeBottleTL(tabID: string, event: NostrEvent) {
+	function makeBottleTL(tabID: string, event: Event) {
 		if (!event.id) {
 			return;
 		}
@@ -549,7 +567,7 @@ export declare var window: Window;
 			const dl = <HTMLElement>document.getElementById('global-tl');
 			dl.innerHTML = '';
 		}
-		subsCon.on('event', (event: NostrEvent) => {
+		subsCon.on('event', (event: Event) => {
 			makeTL('global', relays, event);
 		});
 		//このsubsは全スコープで使い回す必要があるためreturnしてあげる
@@ -568,7 +586,7 @@ export declare var window: Window;
 			const dl = <HTMLElement>document.getElementById('bottle-tl');
 			dl.innerHTML = '';
 		}
-		subsCon.on('event', (event: NostrEvent) => {
+		subsCon.on('event', (event: Event) => {
 			makeBottleTL('bottle', event);
 		});
 		subsCon.on('eose', () => {
