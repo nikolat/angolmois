@@ -650,10 +650,10 @@ declare var window: Window & typeof globalThis;
 	}
 	//ボトル用リレーに繋ぐ
 	function connectBottleRelay(relays: string[], kind: number) {
-		//1週間以内の投稿を取得
+		//1ヶ月以内の投稿を取得
 		const f: Filter = {
 			kinds: [kind],
-			since: Math.floor(Date.now() / 1000) - 7 * 24 *60 * 60,
+			since: Math.floor(Date.now() / 1000) - 30 * 24 *60 * 60,
 			limit: 20
 		};
 		const subsCon = pool.sub(relays, [f]);
