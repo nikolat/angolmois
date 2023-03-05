@@ -39,7 +39,6 @@ declare var window: Window & typeof globalThis;
 	const defaultBottleKind = 9801;
 	const iconSize = 50;
 	const hasDOM: boolean = typeof window === 'object';
-	const isElectron: boolean = hasDOM && (window.api !== undefined);
 	const dtformat = new Intl.DateTimeFormat('ja-jp', {
 		year: 'numeric',
 		month: '2-digit',
@@ -58,86 +57,86 @@ declare var window: Window & typeof globalThis;
 	let ghostNames: string[] = [];
 	let keroNames: string[] = [];
 	let hwnds: string[] = [];
-	if (isElectron) {
-		window.api.ReceiveGhostInfo((data: string[][]) => {
-			hwnds = data[0];
-			ghostNames = data[1];
-			keroNames = data[2];
-			//ドロップダウンメニューに配置
-			const sstpTarget = <HTMLSelectElement>document.getElementById('sstp-target');
-			const ifGhost = <HTMLSelectElement>document.getElementById('bottle-ifghost');
-			const n = sstpTarget.childElementCount;
-			for (let i = 0; i < n; i++) {
-				sstpTarget.remove(0);
-				ifGhost.remove(0);
-			}
-			for (let i = 0; i < ghostNames.length; i++) {
-				const optionSstpTarget = <HTMLOptionElement>document.createElement('option');
-				optionSstpTarget.setAttribute('value', ghostNames[i]);
-				optionSstpTarget.appendChild(document.createTextNode(ghostNames[i]));
-				sstpTarget.appendChild(optionSstpTarget);
-				const optionIgGhost = <HTMLOptionElement>document.createElement('option');
-				optionIgGhost.setAttribute('value', ghostNames[i] + ',' + keroNames[i]);
-				optionIgGhost.appendChild(document.createTextNode(ghostNames[i] + ',' + keroNames[i]));
-				ifGhost.appendChild(optionIgGhost);
-			}
-			bottleSend.disabled = ghostNames.length == 0;
-		});
-		window.api.RequestGhostInfo();
-		const refreshButton = <HTMLButtonElement>document.getElementById('refresh');
-		refreshButton.addEventListener('click', function(){window.api.RequestGhostInfo()});
-		//Bottle送信
-		const bottleSend = <HTMLButtonElement>document.getElementById('bottle-send');
-		bottleSend.addEventListener('click', async function(ev: MouseEvent) {
-			const bottleScript = <HTMLTextAreaElement>document.getElementById('bottle-script');
-			if (bottleScript == null) {
-				return;
-			}
-			const script = bottleScript.value.replace(/\n/g, '');
-			if (script == '') {
-				return;
-			}
-			const ifGhost = (<HTMLSelectElement>document.getElementById('bottle-ifghost')).value;
-			const contentDict = {
-				'Script': script,
-				'IfGhost': ifGhost
+
+	function ReceiveGhostInfo(data: string[][]) {
+		hwnds = data[0];
+		ghostNames = data[1];
+		keroNames = data[2];
+		//ドロップダウンメニューに配置
+		const sstpTarget = <HTMLSelectElement>document.getElementById('sstp-target');
+		const ifGhost = <HTMLSelectElement>document.getElementById('bottle-ifghost');
+		const n = sstpTarget.childElementCount;
+		for (let i = 0; i < n; i++) {
+			sstpTarget.remove(0);
+			ifGhost.remove(0);
+		}
+		for (let i = 0; i < ghostNames.length; i++) {
+			const optionSstpTarget = <HTMLOptionElement>document.createElement('option');
+			optionSstpTarget.setAttribute('value', ghostNames[i]);
+			optionSstpTarget.appendChild(document.createTextNode(ghostNames[i]));
+			sstpTarget.appendChild(optionSstpTarget);
+			const optionIgGhost = <HTMLOptionElement>document.createElement('option');
+			optionIgGhost.setAttribute('value', ghostNames[i] + ',' + keroNames[i]);
+			optionIgGhost.appendChild(document.createTextNode(ghostNames[i] + ',' + keroNames[i]));
+			ifGhost.appendChild(optionIgGhost);
+		}
+		bottleSend.disabled = ghostNames.length == 0;
+	};
+	RequestGhostInfo();
+	const refreshButton = <HTMLButtonElement>document.getElementById('refresh');
+	refreshButton.addEventListener('click', function(){RequestGhostInfo()});
+	//Bottle送信
+	const bottleSend = <HTMLButtonElement>document.getElementById('bottle-send');
+	bottleSend.addEventListener('click', async function(ev: MouseEvent) {
+		const bottleScript = <HTMLTextAreaElement>document.getElementById('bottle-script');
+		if (bottleScript == null) {
+			return;
+		}
+		const script = bottleScript.value.replace(/\n/g, '');
+		if (script == '') {
+			return;
+		}
+		const ifGhost = (<HTMLSelectElement>document.getElementById('bottle-ifghost')).value;
+		const contentDict = {
+			'Script': script,
+			'IfGhost': ifGhost
+		};
+		const kind: Kind = Number((<HTMLSelectElement>document.getElementById('bottle-kind')).value);
+		const baseEvent: UnsignedEvent = {
+			kind: kind,
+			pubkey: '',
+			created_at: Math.floor(Date.now() / 1000),
+			tags: [],
+			content: JSON.stringify(contentDict)
+		};
+		let newEvent: Event;
+		const useNip07 = <HTMLInputElement>document.getElementById('use-nip-07');
+		if (useNip07.checked && window.nostr) {
+			newEvent = await window.nostr.signEvent(baseEvent);
+		}
+		else {
+			baseEvent.pubkey = pk;
+			newEvent = {
+				kind: baseEvent.kind,
+				pubkey: baseEvent.pubkey,
+				created_at: baseEvent.created_at,
+				tags: baseEvent.tags,
+				content: baseEvent.content,
+				id: '',
+				sig: ''
 			};
-			const kind: Kind = Number((<HTMLSelectElement>document.getElementById('bottle-kind')).value);
-			const baseEvent: UnsignedEvent = {
-				kind: kind,
-				pubkey: '',
-				created_at: Math.floor(Date.now() / 1000),
-				tags: [],
-				content: JSON.stringify(contentDict)
-			};
-			let newEvent: Event;
-			const useNip07 = <HTMLInputElement>document.getElementById('use-nip-07');
-			if (useNip07.checked && window.nostr) {
-				newEvent = await window.nostr.signEvent(baseEvent);
-			}
-			else {
-				baseEvent.pubkey = pk;
-				newEvent = {
-					kind: baseEvent.kind,
-					pubkey: baseEvent.pubkey,
-					created_at: baseEvent.created_at,
-					tags: baseEvent.tags,
-					content: baseEvent.content,
-					id: '',
-					sig: ''
-				};
-				newEvent.id = getEventHash(baseEvent);
-				newEvent.sig = signEvent(baseEvent, sk);
-			}
-			const pubs = pool.publish(bottleRelays, newEvent);
-			pubs.on('ok', () => {
-				console.log('Send Bottle: ', contentDict);
-			});
-			pubs.on('failed', (reason: any) => {
-				console.log('Send Bottle Failed: ', reason);
-			});
+			newEvent.id = getEventHash(baseEvent);
+			newEvent.sig = signEvent(baseEvent, sk);
+		}
+		const pubs = pool.publish(bottleRelays, newEvent);
+		pubs.on('ok', () => {
+			console.log('Send Bottle: ', contentDict);
 		});
-	}
+		pubs.on('failed', (reason: any) => {
+			console.log('Send Bottle Failed: ', reason);
+		});
+	});
+
 	if (hasDOM) {
 		//タブ切り替え
 		const radioBtns = <NodeListOf<HTMLInputElement>>document.querySelectorAll('.tabs > input[type="radio"]');
@@ -253,17 +252,86 @@ declare var window: Window & typeof globalThis;
 		});
 	}
 
+	//FMOから起動中のゴースト情報を取得
+	async function RequestGhostInfo() {
+		const mes1 = ''
+			+ 'EXECUTE SSTP/1.1\n'
+			+ 'Charset: UTF-8\n'
+			+ 'SecurityLevel: external\n'
+			+ 'Command: GetFMO\n'
+			+ '\n';
+		const res: string = await postData('http://127.0.0.1:9801/api/sstp/v1', mes1);
+		const lines = res.split('\r\n');
+		const hwnds = [];
+		const names = [];
+		const keronames = [];
+		for (let i = 0; i < lines.length; i++) {
+			if (lines[i].indexOf('.hwnd' + String.fromCharCode(1)) >= 0) {
+				const hwnd = lines[i].split(String.fromCharCode(1))[1].replace('\r', '');
+				hwnds.push(hwnd);
+			}
+			else if (lines[i].indexOf('.name' + String.fromCharCode(1)) >= 0) {
+				const name = lines[i].split(String.fromCharCode(1))[1].replace('\r', '');
+				names.push(name);
+			}
+			else if (lines[i].indexOf('.keroname' + String.fromCharCode(1)) >= 0) {
+				const keroname = lines[i].split(String.fromCharCode(1))[1].replace('\r', '');
+				keronames.push(keroname);
+			}
+		}
+		ReceiveGhostInfo([hwnds, names, keronames]);
+	};
+
 	//DirectSSTPを送信する関数
-	function sendDirectSSTP(note: string, ifGhost: string, name?: string, display_name?: string, picture?: string) {
+	async function sendDirectSSTP(note: string, ifGhost: string, name?: string, display_name?: string, picture?: string) {
 		const index = (<HTMLSelectElement>document.getElementById('sstp-target')).selectedIndex;
 		const hwnd = hwnds[index];
 		const script = '\\0' + note.replace(/\\/g, '\\\\').replace(/\n/g, '\\n') + '\\e';
+		console.log([hwnd, script, ifGhost, note.replace(/\n/g, '\\n'), name, display_name, picture]);
 		if (name) {
-			window.api.SendSSTP([hwnd, script, ifGhost, note.replace(/\n/g, '\\n'), name, display_name, picture]);
+			const res: string = await SSTPSend([hwnd, script, ifGhost, note.replace(/\n/g, '\\n'), name, display_name, picture]);
+			console.log(res);
 		}
 		else {
-			window.api.SendSSTP([hwnd, note.replace(/\n/g, '\\n'), ifGhost]);
+			const res: string = await SSTPSend([hwnd, note.replace(/\n/g, '\\n'), ifGhost]);
+			console.log(res);
 		}
+	}
+
+	function SSTPSend(data: any) {
+		const hwnd = data[0];
+		const script = data[1];
+		const ifGhost = data[2];
+		let mes = ''
+			+ 'NOTIFY SSTP/1.1\n'
+			+ 'Charset: UTF-8\n'
+			+ 'Sender: angolmois-electron\n'
+			+ 'SecurityLevel: external\n'
+			+ 'Event: OnNostr\n'
+			+ 'Option: nobreak\n'
+			+ 'ReceiverGhostHWnd: ' + hwnd + '\n'
+			+ 'IfGhost: ' + ifGhost + '\n'
+			+ 'Script: ' + script + '\n'
+			+ 'Reference0: ' + (ifGhost ? 'Nostr-Bottle/0.1' : 'Nostr/0.1') + '\n';
+		for (let i = 3; i < data.length; i++) {
+			mes += 'Reference' + (i - 2) + ': ' + data[i] + '\n';
+		}
+		mes += '\n';
+		return postData('http://127.0.0.1:9801/api/sstp/v1', mes);
+	};
+
+	// POST メソッドの実装の例
+	async function postData(url = '', data = '') {
+		// 既定のオプションには * が付いています
+		const response = await fetch(url, {
+			method: 'POST', // *GET, POST, PUT, DELETE, etc.
+			headers: {
+				'Content-Type': 'text/plain',
+				'Origin': 'http://127.0.0.1:9801'
+			},
+			body: data
+		})
+		return response.text()
 	}
 
 	//初回接続
@@ -469,14 +537,12 @@ declare var window: Window & typeof globalThis;
 				}
 			});
 			//SSTP Button
-			if (isElectron) {
-				const SSTPButton = document.createElement('button');
-				SSTPButton.textContent = 'Send SSTP';
-				SSTPButton.addEventListener('click', function(ev: MouseEvent) {
-					sendDirectSSTP(event.content, '', profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
-				});
-				dt.appendChild(SSTPButton);
-			}
+			const SSTPButton = document.createElement('button');
+			SSTPButton.textContent = 'Send SSTP';
+			SSTPButton.addEventListener('click', function(ev: MouseEvent) {
+				sendDirectSSTP(event.content, '', profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
+			});
+			dt.appendChild(SSTPButton);
 			//Change ID Button
 			const changeIdButton = document.createElement('button');
 			changeIdButton.textContent = 'この人でログインする';
@@ -572,14 +638,12 @@ declare var window: Window & typeof globalThis;
 		}
 		const dd = document.createElement('dd');
 		//SSTP Button
-		if (isElectron) {
-			const SSTPButton = document.createElement('button');
-			SSTPButton.textContent = 'Send SSTP';
-			SSTPButton.addEventListener('click', function(ev: MouseEvent) {
-				sendDirectSSTP(script, ifGhost);
-			});
-			dt.appendChild(SSTPButton);
-		}
+		const SSTPButton = document.createElement('button');
+		SSTPButton.textContent = 'Send SSTP';
+		SSTPButton.addEventListener('click', function(ev: MouseEvent) {
+			sendDirectSSTP(script, ifGhost);
+		});
+		dt.appendChild(SSTPButton);
 		//Script
 		dd.appendChild(document.createTextNode(script));
 		//relay
