@@ -1,4 +1,4 @@
-# angolmois-electron
+# angolmois
 Nostrリレーから投稿を取得して表示するWebアプリです。  
 投稿を表示すると同時に伺か互換ベースウェア(SSTPサーバー)にSSTPを送信し、ゴースト(キャラクター)に投稿を喋らせます。  
 
@@ -19,7 +19,7 @@ angolmoisからは指定したゴーストに対して以下のようなSSTPが�
 ```
 NOTIFY SSTP/1.1
 Charset: UTF-8
-Sender: angolmois-electron
+Sender: angolmois
 Event: OnNostr
 Option: nobreak
 Script: \0おはノスー！\e

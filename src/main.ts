@@ -305,7 +305,7 @@ declare var window: Window & typeof globalThis;
 		let mes = ''
 			+ 'NOTIFY SSTP/1.1\n'
 			+ 'Charset: UTF-8\n'
-			+ 'Sender: angolmois-electron\n'
+			+ 'Sender: angolmois\n'
 			+ 'SecurityLevel: external\n'
 			+ 'Event: OnNostr\n'
 			+ 'Option: nobreak\n'
