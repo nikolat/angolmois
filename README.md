@@ -1,20 +1,20 @@
 # angolmois-electron
-Nostrリレーから投稿を取得して表示するアプリです。  
+Nostrリレーから投稿を取得して表示するWebアプリです。  
 投稿を表示すると同時に伺か互換ベースウェア(SSTPサーバー)にSSTPを送信し、ゴースト(キャラクター)に投稿を喋らせます。  
 
-![プレビュー/ノーマル](image/preview1.gif "プレビュー/ノーマル")
+![プレビュー](image/preview1.gif "プレビュー")
 
 ## 何て読むの？
 「アンゴルモア」と呼んでください。
 
-## 使い方
+## 使い方1
 1. 下記のサイトから最新版のSSPをダウンロードしssp.exeを起動します。  
   [独立伺か研究施設 ばぐとら研究所](http://ssp.shillest.net/)
-2. [Releases](https://github.com/nikolat/angolmois-electron/releases)よりangolmois-win32-x64.zipをダウンロードしangolmois.exeを起動します。
+2. [アンゴルモア](https://nikolat.github.io/angolmois/)を開きます。
 3. しばらくすると投稿が表示され、同時に起動しているゴーストが投稿内容を喋り出します。
 
-## ゴースト側のカスタマイズ(伺か経験者向け)
-angolmoisは[SSTP](http://ssp.shillest.net/ukadoc/manual/spec_sstp.html)によりSSTPサーバーと通信を行います。  
+### ゴースト側のカスタマイズ(伺か経験者向け)
+angolmoisは[SSTP](http://ssp.shillest.net/ukadoc/manual/spec_sstp.html) over HTTPによりSSTPサーバーと通信を行います。  
 angolmoisからは指定したゴーストに対して以下のようなSSTPが送信されます。
 ```
 NOTIFY SSTP/1.1
@@ -58,14 +58,13 @@ OnNostr
 }
 ```
 
-![プレビュー/カスタム](image/preview2.gif "プレビュー/カスタム")  
-※画像は[YAYA-shiori/konnoyayame](https://github.com/YAYA-shiori/konnoyayame)をベースとし、立ち絵を[nobodyu氏作](https://iris.to/post/note1fl4v64guhz3zrmf9l808p5gx6ula7wz307u08r0h2lmxxatuvkxsa60dt3)のものに差し替えたゴーストです。  
-※[さらに可愛く](https://iris.to/post/note1v3yjz9jm7up9ndn9tvctarmcnqna0ttykgu5qmzmhejhrlwrqhvqatfckt)なりました。
-
-## 他にカスタマイズ方法は？
+### 他にカスタマイズ方法は？
 音声読み上げプラグイン
 
 - [apxxxxxxe/Bouyomi: 伺かプラグイン](https://github.com/apxxxxxxe/Bouyomi)
+
+## 使い方2
+Kind 9801 および 9821 を使用してSakura Scriptを流す[SSTP Bottle](http://bottle.mikage.to/)を模した実験的機能も付いています。
 
 ## 伺かって何？
 
