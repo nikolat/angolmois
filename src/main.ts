@@ -23,13 +23,12 @@ declare var window: Window & typeof globalThis;
 	const defaultRelays = [
 		'wss://relay-jp.nostr.wirednet.jp',
 		'wss://nostr.h3z.jp',
-		'wss://nostr.holybea.com'
+		'wss://nostr.holybea.com',
+		'wss://nostr-relay.nokotaro.com'
 	];
 	const additionalRelays = [
-		'wss://nostr-relay.nokotaro.com',
 		'wss://relay.nostr.wirednet.jp',
-		'wss://relay.damus.io',
-		'wss://relay.snort.social'
+		'wss://relay.damus.io'
 	];
 	const bottleRelays = [
 		'wss://relay-jp.nostr.wirednet.jp',
