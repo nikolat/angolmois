@@ -1,27 +1,34 @@
 name: Build
-
 on:
   workflow_dispatch:
-    
+permissions: write-all
 jobs:
   build:
-    runs-on: windows-2022
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
       - name: Install Node.js, NPM and Yarn
         uses: actions/setup-node@v3
         with:
           node-version: 18
-
-      - name: Build app for release
+      - name: Build
         run: |
           npm install
           npm run build
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v1
-        with:
-          name: angolmois-win32-x64
-          path: angolmois-win32-x64
+      - name: Diff
+        id: diff
+        run: |
+          git add -N .
+          git diff --name-only --exit-code
+        continue-on-error: true
+      - name: Commit & Push
+        run: |
+          set -x
+          git config user.name beefriends
+          git config user.email ${{ secrets.BEEFRIENDS_EMAIL_ADDRESS }}
+          git add .
+          git commit -m 'build for GitHub Pages'
+          git push
+        if: steps.diff.outcome == 'failure'
