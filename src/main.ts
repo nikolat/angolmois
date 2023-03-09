@@ -58,90 +58,90 @@ declare var window: Window & typeof globalThis;
 	let keroNames: string[] = [];
 	let hwnds: string[] = [];
 
-	function ReceiveGhostInfo(data: string[][]) {
-		hwnds = data[0];
-		ghostNames = data[1];
-		keroNames = data[2];
-		//ドロップダウンメニューに配置
-		const sstpTarget = <HTMLSelectElement>document.getElementById('sstp-target');
-		const ifGhost = <HTMLSelectElement>document.getElementById('bottle-ifghost');
-		const n = sstpTarget.childElementCount;
-		for (let i = 0; i < n; i++) {
-			sstpTarget.remove(0);
-			ifGhost.remove(0);
-		}
-		for (let i = 0; i < ghostNames.length; i++) {
-			const optionSstpTarget = <HTMLOptionElement>document.createElement('option');
-			optionSstpTarget.setAttribute('value', ghostNames[i]);
-			optionSstpTarget.appendChild(document.createTextNode(ghostNames[i]));
-			sstpTarget.appendChild(optionSstpTarget);
-			const optionIgGhost = <HTMLOptionElement>document.createElement('option');
-			optionIgGhost.setAttribute('value', ghostNames[i] + ',' + keroNames[i]);
-			optionIgGhost.appendChild(document.createTextNode(ghostNames[i] + ',' + keroNames[i]));
-			ifGhost.appendChild(optionIgGhost);
-		}
-		bottleSend.disabled = ghostNames.length == 0;
-	};
-	RequestGhostInfo();
-	const refreshButton = <HTMLButtonElement>document.getElementById('refresh');
-	refreshButton.addEventListener('click', function(){RequestGhostInfo()});
-	//Bottle送信
-	const bottleSend = <HTMLButtonElement>document.getElementById('bottle-send');
-	bottleSend.addEventListener('click', async function(ev: MouseEvent) {
-		const bottleScript = <HTMLTextAreaElement>document.getElementById('bottle-script');
-		if (bottleScript == null) {
-			return;
-		}
-		const script = bottleScript.value.replace(/\n/g, '');
-		if (script == '') {
-			return;
-		}
-		bottleSend.disabled = true;
-		const ifGhost = (<HTMLSelectElement>document.getElementById('bottle-ifghost')).value;
-		const contentDict = {
-			'Script': script,
-			'IfGhost': ifGhost
-		};
-		const kind: Kind = Number((<HTMLSelectElement>document.getElementById('bottle-kind')).value);
-		const baseEvent: UnsignedEvent = {
-			kind: kind,
-			pubkey: '',
-			created_at: Math.floor(Date.now() / 1000),
-			tags: [],
-			content: JSON.stringify(contentDict)
-		};
-		let newEvent: Event;
-		const useNip07 = <HTMLInputElement>document.getElementById('use-nip-07');
-		if (useNip07.checked && window.nostr) {
-			newEvent = await window.nostr.signEvent(baseEvent);
-		}
-		else {
-			baseEvent.pubkey = pk;
-			newEvent = {
-				kind: baseEvent.kind,
-				pubkey: baseEvent.pubkey,
-				created_at: baseEvent.created_at,
-				tags: baseEvent.tags,
-				content: baseEvent.content,
-				id: '',
-				sig: ''
-			};
-			newEvent.id = getEventHash(baseEvent);
-			newEvent.sig = signEvent(baseEvent, sk);
-		}
-		const pubs = pool.publish(bottleRelays, newEvent);
-		pubs.on('ok', () => {
-			console.log('Send Bottle: ', contentDict);
-			bottleScript.value = '';
-			bottleSend.disabled = false;
-		});
-		pubs.on('failed', (reason: any) => {
-			console.log('Send Bottle Failed: ', reason);
-			bottleSend.disabled = false;
-		});
-	});
-
 	if (hasDOM) {
+		function ReceiveGhostInfo(data: string[][]) {
+			hwnds = data[0];
+			ghostNames = data[1];
+			keroNames = data[2];
+			//ドロップダウンメニューに配置
+			const sstpTarget = <HTMLSelectElement>document.getElementById('sstp-target');
+			const ifGhost = <HTMLSelectElement>document.getElementById('bottle-ifghost');
+			const n = sstpTarget.childElementCount;
+			for (let i = 0; i < n; i++) {
+				sstpTarget.remove(0);
+				ifGhost.remove(0);
+			}
+			for (let i = 0; i < ghostNames.length; i++) {
+				const optionSstpTarget = <HTMLOptionElement>document.createElement('option');
+				optionSstpTarget.setAttribute('value', ghostNames[i]);
+				optionSstpTarget.appendChild(document.createTextNode(ghostNames[i]));
+				sstpTarget.appendChild(optionSstpTarget);
+				const optionIgGhost = <HTMLOptionElement>document.createElement('option');
+				optionIgGhost.setAttribute('value', ghostNames[i] + ',' + keroNames[i]);
+				optionIgGhost.appendChild(document.createTextNode(ghostNames[i] + ',' + keroNames[i]));
+				ifGhost.appendChild(optionIgGhost);
+			}
+			const bottleSend = <HTMLButtonElement>document.getElementById('bottle-send');
+			bottleSend.disabled = ghostNames.length == 0;
+		};
+		RequestGhostInfo();
+		const refreshButton = <HTMLButtonElement>document.getElementById('refresh');
+		refreshButton.addEventListener('click', function(){RequestGhostInfo()});
+		//Bottle送信
+		const bottleSend = <HTMLButtonElement>document.getElementById('bottle-send');
+		bottleSend.addEventListener('click', async function(ev: MouseEvent) {
+			const bottleScript = <HTMLTextAreaElement>document.getElementById('bottle-script');
+			if (bottleScript == null) {
+				return;
+			}
+			const script = bottleScript.value.replace(/\n/g, '');
+			if (script == '') {
+				return;
+			}
+			bottleSend.disabled = true;
+			const ifGhost = (<HTMLSelectElement>document.getElementById('bottle-ifghost')).value;
+			const contentDict = {
+				'Script': script,
+				'IfGhost': ifGhost
+			};
+			const kind: Kind = Number((<HTMLSelectElement>document.getElementById('bottle-kind')).value);
+			const baseEvent: UnsignedEvent = {
+				kind: kind,
+				pubkey: '',
+				created_at: Math.floor(Date.now() / 1000),
+				tags: [],
+				content: JSON.stringify(contentDict)
+			};
+			let newEvent: Event;
+			const useNip07 = <HTMLInputElement>document.getElementById('use-nip-07');
+			if (useNip07.checked && window.nostr) {
+				newEvent = await window.nostr.signEvent(baseEvent);
+			}
+			else {
+				baseEvent.pubkey = pk;
+				newEvent = {
+					kind: baseEvent.kind,
+					pubkey: baseEvent.pubkey,
+					created_at: baseEvent.created_at,
+					tags: baseEvent.tags,
+					content: baseEvent.content,
+					id: '',
+					sig: ''
+				};
+				newEvent.id = getEventHash(baseEvent);
+				newEvent.sig = signEvent(baseEvent, sk);
+			}
+			const pubs = pool.publish(bottleRelays, newEvent);
+			pubs.on('ok', () => {
+				console.log('Send Bottle: ', contentDict);
+				bottleScript.value = '';
+				bottleSend.disabled = false;
+			});
+			pubs.on('failed', (reason: any) => {
+				console.log('Send Bottle Failed: ', reason);
+				bottleSend.disabled = false;
+			});
+		});
 		//タブ切り替え
 		const radioBtns = <NodeListOf<HTMLInputElement>>document.querySelectorAll('.tabs > input[type="radio"]');
 		radioBtns.forEach(radio => {
@@ -254,37 +254,36 @@ declare var window: Window & typeof globalThis;
 				npubNip07.disabled = true;
 			}
 		});
+		//FMOから起動中のゴースト情報を取得
+		async function RequestGhostInfo() {
+			const mes1 = ''
+				+ 'EXECUTE SSTP/1.1\n'
+				+ 'Charset: UTF-8\n'
+				+ 'SecurityLevel: external\n'
+				+ 'Command: GetFMO\n'
+				+ '\n';
+			const res: string = await postData('http://127.0.0.1:9801/api/sstp/v1', mes1);
+			const lines = res.split('\r\n');
+			const hwnds = [];
+			const names = [];
+			const keronames = [];
+			for (let i = 0; i < lines.length; i++) {
+				if (lines[i].indexOf('.hwnd' + String.fromCharCode(1)) >= 0) {
+					const hwnd = lines[i].split(String.fromCharCode(1))[1].replace('\r', '');
+					hwnds.push(hwnd);
+				}
+				else if (lines[i].indexOf('.name' + String.fromCharCode(1)) >= 0) {
+					const name = lines[i].split(String.fromCharCode(1))[1].replace('\r', '');
+					names.push(name);
+				}
+				else if (lines[i].indexOf('.keroname' + String.fromCharCode(1)) >= 0) {
+					const keroname = lines[i].split(String.fromCharCode(1))[1].replace('\r', '');
+					keronames.push(keroname);
+				}
+			}
+			ReceiveGhostInfo([hwnds, names, keronames]);
+		};
 	}
-
-	//FMOから起動中のゴースト情報を取得
-	async function RequestGhostInfo() {
-		const mes1 = ''
-			+ 'EXECUTE SSTP/1.1\n'
-			+ 'Charset: UTF-8\n'
-			+ 'SecurityLevel: external\n'
-			+ 'Command: GetFMO\n'
-			+ '\n';
-		const res: string = await postData('http://127.0.0.1:9801/api/sstp/v1', mes1);
-		const lines = res.split('\r\n');
-		const hwnds = [];
-		const names = [];
-		const keronames = [];
-		for (let i = 0; i < lines.length; i++) {
-			if (lines[i].indexOf('.hwnd' + String.fromCharCode(1)) >= 0) {
-				const hwnd = lines[i].split(String.fromCharCode(1))[1].replace('\r', '');
-				hwnds.push(hwnd);
-			}
-			else if (lines[i].indexOf('.name' + String.fromCharCode(1)) >= 0) {
-				const name = lines[i].split(String.fromCharCode(1))[1].replace('\r', '');
-				names.push(name);
-			}
-			else if (lines[i].indexOf('.keroname' + String.fromCharCode(1)) >= 0) {
-				const keroname = lines[i].split(String.fromCharCode(1))[1].replace('\r', '');
-				keronames.push(keroname);
-			}
-		}
-		ReceiveGhostInfo([hwnds, names, keronames]);
-	};
 
 	//DirectSSTPを送信する関数
 	async function sendSSTP(note: string, ifGhost: string, name?: string, display_name?: string, picture?: string) {
