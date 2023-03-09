@@ -95,6 +95,7 @@ declare var window: Window & typeof globalThis;
 		if (script == '') {
 			return;
 		}
+		bottleSend.disabled = true;
 		const ifGhost = (<HTMLSelectElement>document.getElementById('bottle-ifghost')).value;
 		const contentDict = {
 			'Script': script,
@@ -130,9 +131,12 @@ declare var window: Window & typeof globalThis;
 		const pubs = pool.publish(bottleRelays, newEvent);
 		pubs.on('ok', () => {
 			console.log('Send Bottle: ', contentDict);
+			bottleScript.value = '';
+			bottleSend.disabled = false;
 		});
 		pubs.on('failed', (reason: any) => {
 			console.log('Send Bottle Failed: ', reason);
+			bottleSend.disabled = false;
 		});
 	});
 
