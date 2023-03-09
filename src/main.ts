@@ -286,7 +286,10 @@ declare var window: Window & typeof globalThis;
 	};
 
 	//DirectSSTPを送信する関数
-	async function sendDirectSSTP(note: string, ifGhost: string, name?: string, display_name?: string, picture?: string) {
+	async function sendSSTP(note: string, ifGhost: string, name?: string, display_name?: string, picture?: string) {
+		if (!(<HTMLInputElement>document.getElementById('sstp-enable')).checked) {
+			return;
+		}
 		const index = (<HTMLSelectElement>document.getElementById('sstp-target')).selectedIndex;
 		const hwnd = hwnds[index];
 		const script = '\\0' + note.replace(/\\/g, '\\\\').replace(/\n/g, '\\n') + '\\e';
@@ -543,7 +546,7 @@ declare var window: Window & typeof globalThis;
 			const SSTPButton = document.createElement('button');
 			SSTPButton.textContent = 'Send SSTP';
 			SSTPButton.addEventListener('click', function(ev: MouseEvent) {
-				sendDirectSSTP(event.content, '', profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
+				sendSSTP(event.content, '', profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
 			});
 			dt.appendChild(SSTPButton);
 			//Change ID Button
@@ -607,7 +610,7 @@ declare var window: Window & typeof globalThis;
 			}
 			//ゴーストにDirectSSTPを送信
 			if ((<HTMLInputElement>document.getElementById(tabID)).checked && isNewest) {
-				sendDirectSSTP(event.content, '', profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
+				sendSSTP(event.content, '', profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
 			}
 		});
 		subs2.on('eose', () => {
@@ -644,7 +647,7 @@ declare var window: Window & typeof globalThis;
 		const SSTPButton = document.createElement('button');
 		SSTPButton.textContent = 'Send SSTP';
 		SSTPButton.addEventListener('click', function(ev: MouseEvent) {
-			sendDirectSSTP(script, ifGhost);
+			sendSSTP(script, ifGhost);
 		});
 		dt.appendChild(SSTPButton);
 		//Script
@@ -692,7 +695,7 @@ declare var window: Window & typeof globalThis;
 		}
 		//ゴーストにDirectSSTPを送信
 		if ((<HTMLInputElement>document.getElementById(tabID)).checked && isNewest) {
-			sendDirectSSTP(script, ifGhost);
+			sendSSTP(script, ifGhost);
 		}
 	}
 
