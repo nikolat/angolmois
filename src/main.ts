@@ -176,7 +176,7 @@ declare var window: Window & typeof globalThis;
 					if (loginWithNip07.checked) {
 						const npub = await window.nostr?.getPublicKey()
 						if (npub !== undefined) {
-							pubkeyInput.value = npub;
+							pubkeyInput.value = nip19.npubEncode(npub);
 							pubkeyInput.dispatchEvent(new Event('change'));
 						}
 					}
