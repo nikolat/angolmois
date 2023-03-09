@@ -37,6 +37,7 @@ declare var window: Window & typeof globalThis;
 	const bottleKinds: number[] = [9801, 9821];
 	const defaultBottleKind = 9801;
 	const iconSize = 50;
+	const baseLinkURL = 'https://nostx.shino3.net/';
 	const hasDOM: boolean = typeof window === 'object';
 	const dtformat = new Intl.DateTimeFormat('ja-jp', {
 		year: 'numeric',
@@ -207,7 +208,7 @@ declare var window: Window & typeof globalThis;
 									}
 									dt.appendChild(document.createTextNode(c.display_name));
 									const a = document.createElement('a');
-									a.setAttribute('href', 'https://iris.to/' + nip19.npubEncode(eventF0.pubkey));
+									a.setAttribute('href', baseLinkURL + nip19.npubEncode(eventF0.pubkey));
 									a.textContent = '@' + c.name;
 									dt.appendChild(a);
 									const dd = <HTMLElement>document.getElementById('bottle-profile-dd');
@@ -425,7 +426,7 @@ declare var window: Window & typeof globalThis;
 					}
 					dt.appendChild(document.createTextNode(c.display_name));
 					const a = document.createElement('a');
-					a.setAttribute('href', 'https://iris.to/' + nip19.npubEncode(eventF0.pubkey));
+					a.setAttribute('href', baseLinkURL + nip19.npubEncode(eventF0.pubkey));
 					a.textContent = '@' + c.name;
 					dt.appendChild(a);
 					const dd = <HTMLElement>document.getElementById('profile-dd');
@@ -497,7 +498,7 @@ declare var window: Window & typeof globalThis;
 			}
 			dt.appendChild(document.createTextNode(profile.display_name));
 			const a = document.createElement('a');
-			a.setAttribute('href', 'https://iris.to/' + nip19.npubEncode(event.pubkey));
+			a.setAttribute('href', baseLinkURL + nip19.npubEncode(event.pubkey));
 			a.textContent = '@' + profile.name;
 			dt.appendChild(a);
 			const time = document.createElement('time');
