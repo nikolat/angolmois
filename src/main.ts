@@ -570,6 +570,8 @@ declare var window: Window & typeof globalThis;
 			const changeIdButton = document.createElement('button');
 			changeIdButton.textContent = 'この人でログインする';
 			changeIdButton.addEventListener('click', function(ev: MouseEvent) {
+				const loginWithNip07 = <HTMLInputElement>document.getElementById('login-with-nip-07');
+				loginWithNip07.checked = false;
 				const pubkeyInput = <HTMLInputElement>document.getElementById('pubkey');
 				pubkeyInput.value = nip19.npubEncode(event.pubkey);
 				pubkeyInput.dispatchEvent(new Event('change'));
