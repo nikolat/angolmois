@@ -51,11 +51,19 @@
 				</div>
 				<div class="tab_content" id="following_content">
 					<div class="tab_content_description">
-						<label for="pubkey">公開鍵</label>
-						<input id="pubkey" name="pubkey" type="text" size="63" minlength="63" maxlength="63" placeholder="npub1...">
-						<label for="following-relay">接続先リレー</label>
-						<select name="following-relay" id="following-relay" size="5">
-						</select>
+						<fieldset>
+							<legend>フォローリスト取得元</legend>
+							<label for="pubkey">公開鍵</label>
+							<input id="pubkey" name="pubkey" type="text" size="63" minlength="63" maxlength="63" placeholder="npub...">
+							<label for="login-with-nip-07">NIP-07でログインする</label>
+							<input id="login-with-nip-07" name="login-with-nip-07" type="checkbox">
+						</fieldset>
+						<fieldset>
+							<legend>リレー情報</legend>
+							<label for="following-relay">接続先リレー</label>
+							<select name="following-relay" id="following-relay" size="5">
+							</select>
+						</fieldset>
 						<dl id="profile-dl">
 							<dt id="profile-dt">None</dt>
 							<dd id="profile-dd">None</dd>

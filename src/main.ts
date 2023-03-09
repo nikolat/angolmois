@@ -165,10 +165,26 @@ declare var window: Window & typeof globalThis;
 			subsBase = connectBottleRelay(bottleRelays, kind);
 		});
 		(window as EventTarget).addEventListener('load', () => {
-			//NIP-07認証を使用するチェック
+			//NIP-07を使用するチェック
 			const useNip07 = <HTMLInputElement>document.getElementById('use-nip-07');
 			const npubNip07 = <HTMLInputElement>document.getElementById('npub-nip-07');
+			//NIP-07でログインするチェック
+			const loginWithNip07 = <HTMLInputElement>document.getElementById('login-with-nip-07');
 			if (window.nostr && window.nostr.getPublicKey) {
+				loginWithNip07.addEventListener('change', async (e) => {
+					const pubkeyInput = <HTMLInputElement>document.getElementById('pubkey');
+					if (loginWithNip07.checked) {
+						const npub = await window.nostr?.getPublicKey()
+						if (npub !== undefined) {
+							pubkeyInput.value = npub;
+							pubkeyInput.dispatchEvent(new Event('change'));
+						}
+					}
+					else {
+						pubkeyInput.value = '';
+						pubkeyInput.dispatchEvent(new Event('change'));
+					}
+				});
 				useNip07.addEventListener('change', async() => {
 					if (useNip07.checked) {
 						await (async function() {
@@ -250,6 +266,7 @@ declare var window: Window & typeof globalThis;
 				});
 			}
 			else {
+				loginWithNip07.disabled = true;
 				useNip07.disabled = true;
 				npubNip07.disabled = true;
 			}
