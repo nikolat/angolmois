@@ -23,10 +23,10 @@ declare var window: Window & typeof globalThis;
 	const defaultRelays = [
 		'wss://relay-jp.nostr.wirednet.jp',
 		'wss://nostr.h3z.jp',
-		'wss://nostr.holybea.com',
-		'wss://nostr-relay.nokotaro.com'
+		'wss://nostr.holybea.com'
 	];
 	const additionalRelays = [
+		'wss://nostr-relay.nokotaro.com',
 		'wss://relay.nostr.wirednet.jp',
 		'wss://relay.damus.io'
 	];
@@ -38,6 +38,7 @@ declare var window: Window & typeof globalThis;
 	const defaultBottleKind = 9801;
 	const iconSize = 50;
 	const baseLinkURL = 'https://nostx.shino3.net/';
+	const sspServerURL = 'http://localhost:9801';
 	const hasDOM: boolean = typeof window === 'object';
 	const dtformat = new Intl.DateTimeFormat('ja-jp', {
 		year: 'numeric',
@@ -279,7 +280,7 @@ declare var window: Window & typeof globalThis;
 				+ 'SecurityLevel: external\n'
 				+ 'Command: GetFMO\n'
 				+ '\n';
-			const res: string = await postData('http://127.0.0.1:9801/api/sstp/v1', mes1);
+			const res: string = await postData(sspServerURL + '/api/sstp/v1', mes1);
 			const lines = res.split('\r\n');
 			const hwnds = [];
 			const names = [];
@@ -340,7 +341,7 @@ declare var window: Window & typeof globalThis;
 			mes += 'Reference' + (i - 2) + ': ' + data[i] + '\n';
 		}
 		mes += '\n';
-		return postData('http://127.0.0.1:9801/api/sstp/v1', mes);
+		return postData(sspServerURL + '/api/sstp/v1', mes);
 	};
 
 	// POST メソッドの実装の例
@@ -350,7 +351,7 @@ declare var window: Window & typeof globalThis;
 			method: 'POST', // *GET, POST, PUT, DELETE, etc.
 			headers: {
 				'Content-Type': 'text/plain',
-				'Origin': 'http://127.0.0.1:9801'
+				'Origin': sspServerURL
 			},
 			body: data
 		})
