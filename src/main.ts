@@ -278,7 +278,7 @@ declare var window: Window & typeof globalThis;
 				,'Charset: UTF-8'
 				,'SecurityLevel: external'
 				,'Command: GetFMO'
-				,''];
+				,'',''];
 			const res: string = await postData(sspServerURL + '/api/sstp/v1', mes.join('\n'));
 			const lines = res.split('\r\n');
 			const hwnds = [];
@@ -337,6 +337,7 @@ declare var window: Window & typeof globalThis;
 		for (let i = 3; i < data.length; i++) {
 			mes.push(`Reference${(i - 2)}: ${data[i]}`);
 		}
+		mes.push('');
 		mes.push('');
 		const res: string = await postData(sspServerURL + '/api/sstp/v1', mes.join('\n'));
 		console.log(mes.join('\n'), '\n----------\n', res, '\n----------\n');
