@@ -274,13 +274,12 @@ declare var window: Window & typeof globalThis;
 		});
 		//FMOから起動中のゴースト情報を取得
 		async function RequestGhostInfo() {
-			const mes1 = ''
-				+ 'EXECUTE SSTP/1.1\n'
-				+ 'Charset: UTF-8\n'
-				+ 'SecurityLevel: external\n'
-				+ 'Command: GetFMO\n'
-				+ '\n';
-			const res: string = await postData(sspServerURL + '/api/sstp/v1', mes1);
+			const mes = ['EXECUTE SSTP/1.1'
+				,'Charset: UTF-8'
+				,'SecurityLevel: external'
+				,'Command: GetFMO'
+				,''];
+			const res: string = await postData(sspServerURL + '/api/sstp/v1', mes.join('\n'));
 			const lines = res.split('\r\n');
 			const hwnds = [];
 			const names = [];
@@ -311,47 +310,44 @@ declare var window: Window & typeof globalThis;
 		const index = (<HTMLSelectElement>document.getElementById('sstp-target')).selectedIndex;
 		const hwnd = hwnds[index];
 		const script = '\\0' + note.replace(/\\/g, '\\\\').replace(/\n/g, '\\n') + '\\e';
-		console.log([hwnd, script, ifGhost, note.replace(/\n/g, '\\n'), name, display_name, picture]);
 		if (name) {
 			const res: string = await SSTPSend([hwnd, script, ifGhost, note.replace(/\n/g, '\\n'), name, display_name, picture]);
-			console.log(res);
 		}
 		else {
 			const res: string = await SSTPSend([hwnd, note.replace(/\n/g, '\\n'), ifGhost]);
-			console.log(res);
 		}
 	}
 
-	function SSTPSend(data: any) {
+	async function SSTPSend(data: any) {
 		const hwnd = data[0];
 		const script = data[1];
 		const ifGhost = data[2];
-		let mes = ''
-			+ 'NOTIFY SSTP/1.1\n'
-			+ 'Charset: UTF-8\n'
-			+ 'Sender: angolmois\n'
-			+ 'SecurityLevel: external\n'
-			+ 'Event: OnNostr\n'
-			+ 'Option: nobreak\n'
-			+ 'ReceiverGhostHWnd: ' + hwnd + '\n'
-			+ 'IfGhost: ' + ifGhost + '\n'
-			+ 'Script: ' + script + '\n'
-			+ 'Reference0: ' + (ifGhost ? 'Nostr-Bottle/0.1' : 'Nostr/0.1') + '\n';
-		for (let i = 3; i < data.length; i++) {
-			mes += 'Reference' + (i - 2) + ': ' + data[i] + '\n';
+		const mes = ['NOTIFY SSTP/1.1'
+			,'Charset: UTF-8'
+			,'SecurityLevel: external'
+			,'Sender: angolmois'
+			,'Event: OnNostr'
+			,'Option: nobreak'
+			,`ReceiverGhostHWnd: ${hwnd}`];
+		if (ifGhost) {
+			mes.push(`IfGhost: ${ifGhost}`);
 		}
-		mes += '\n';
-		return postData(sspServerURL + '/api/sstp/v1', mes);
+		mes.push(`Script: ${script}`);
+		mes.push(`Reference0: ${(ifGhost ? 'Nostr-Bottle/0.1' : 'Nostr/0.1')}`);
+		for (let i = 3; i < data.length; i++) {
+			mes.push(`Reference${(i - 2)}: ${data[i]}`);
+		}
+		mes.push('');
+		const res: string = await postData(sspServerURL + '/api/sstp/v1', mes.join('\n'));
+		console.log(mes.join('\n'), '\n----------\n', res, '\n----------\n');
+		return res;
 	};
 
-	// POST メソッドの実装の例
 	async function postData(url = '', data = '') {
-		// 既定のオプションには * が付いています
 		const response = await fetch(url, {
-			method: 'POST', // *GET, POST, PUT, DELETE, etc.
+			method: 'POST',
 			headers: {
-				'Content-Type': 'text/plain',
-				'Origin': sspServerURL
+				'Content-Type': 'text/plain'
 			},
 			body: data
 		})

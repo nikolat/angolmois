@@ -6,7 +6,7 @@
 		"watch": "webpack -w"
 	},
 	"devDependencies": {
-		"nostr-tools": "^1.7.4",
+		"nostr-tools": "^1.8.1",
 		"ts-loader": "^9.4.2",
 		"typescript": "^4.9.5",
 		"webpack": "^5.76.1",

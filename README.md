@@ -19,6 +19,7 @@ angolmoisからは指定したゴーストに対して以下のようなSSTPが�
 ```
 NOTIFY SSTP/1.1
 Charset: UTF-8
+SecurityLevel: external
 Sender: angolmois
 Event: OnNostr
 Option: nobreak
@@ -32,7 +33,7 @@ Reference4: https://sample.com/avatar.png
 ゴーストはOnNostrイベントに対して独自に[SakuraScript](http://ssp.shillest.net/ukadoc/manual/list_sakura_script.html)を応答することで通知内容をカスタマイズして表現することができます。  
 以下に[YAYA](https://github.com/YAYA-shiori/yaya-shiori/wiki)による応答実装例を示します。  
 ```
-OnNostr
+ExternalEvent.OnNostr
 {
 	_protocol_version = reference[0]
 	if _protocol_version != 'Nostr/0.1'
