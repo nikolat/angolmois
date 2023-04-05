@@ -390,7 +390,7 @@ declare var window: Window & typeof globalThis;
 			});
 			const subsF3 = pool.sub(Array.from(new Set(tRelays)), [f3]);
 			let gotF3 = false;
-			subsF3.on('event', (eventF3: Event) => {
+			subsF3.on('event', async (eventF3: Event) => {
 				if (gotF3) {
 					return;
 				}
@@ -407,19 +407,21 @@ declare var window: Window & typeof globalThis;
 				Array.from(followingRelays.options).forEach(option => {
 					followingRelays.remove(0);
 				});
-				Object.keys(relays).forEach(function(relay) {
+				Object.keys(relays).forEach((relay) => {
 					relaysa.push(relay);
 					const op = <HTMLOptGroupElement>document.createElement('option');
 					op.textContent = relay;
 					followingRelays.add(op);
 				});
-				relaysa.forEach(async function(relay) {
-					try {
-						await pool.ensureRelay(relay);
-					} catch (error) {
-						console.log('ensureRelay error: ', error);
+				await (async() => {
+					for (const relay of relaysa) {
+						try {
+							await pool.ensureRelay(relay);
+						} catch (error) {
+							console.log('ensureRelay error: ', error);
+						}
 					}
-				});
+				})();
 				const f0: Filter = {
 					kinds: [0],
 					authors: [pubkey],
@@ -465,7 +467,9 @@ declare var window: Window & typeof globalThis;
 				});
 				subsF1.on('eose', () => {
 				});
-				subsFollowing.unsub();
+				if (subsFollowing) {
+					subsFollowing.unsub();
+				}
 				subsFollowing = subsF1;
 			});
 			subsF3.on('eose', () => {
