@@ -395,7 +395,14 @@ declare var window: Window & typeof globalThis;
 					return;
 				}
 				gotF3 = true;
-				const relays: any = JSON.parse(eventF3.content);
+				let relays: any;
+				try {
+					relays = JSON.parse(eventF3.content);
+				} catch (error) {
+					console.log(error);
+					console.log(eventF3);
+					return;
+				}
 				const relaysa: string[] = [];
 				const followings: string[] = [];
 				eventF3.tags.forEach((tag: string[]) => {
@@ -413,15 +420,14 @@ declare var window: Window & typeof globalThis;
 					op.textContent = relay;
 					followingRelays.add(op);
 				});
-				await (async() => {
-					for (const relay of relaysa) {
-						try {
-							await pool.ensureRelay(relay);
-						} catch (error) {
-							console.log('ensureRelay error: ', error);
-						}
+				const procs = relaysa.map((relay) => {
+					try {
+						pool.ensureRelay(relay);
+					} catch (error) {
+						console.log('ensureRelay error: ', error);
 					}
-				})();
+				});
+				const ret = await Promise.all(procs);
 				const f0: Filter = {
 					kinds: [0],
 					authors: [pubkey],
