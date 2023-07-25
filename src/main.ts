@@ -22,16 +22,19 @@ declare var window: Window & typeof globalThis;
 (function (){
 	const defaultRelays = [
 		'wss://relay-jp.nostr.wirednet.jp',
-		'wss://nostr.h3z.jp',
+		'wss://nrelay-jp.c-stellar.net',
 		'wss://nostr.holybea.com'
 	];
 	const additionalRelays = [
+		'wss://yabu.me',
 		'wss://nostr-relay.nokotaro.com',
 		'wss://relay.nostr.wirednet.jp',
-		'wss://relay.damus.io'
+		'wss://relay.damus.io',
+		'wss://nos.lol'
 	];
 	const bottleRelays = [
 		'wss://relay-jp.nostr.wirednet.jp',
+		'wss://nrelay-jp.c-stellar.net',
 		'wss://nostr.holybea.com'
 	];
 	const bottleKinds: number[] = [9801, 9821];
