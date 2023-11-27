@@ -5,11 +5,9 @@ import {
 	Sub,
 	generatePrivateKey,
 	getPublicKey,
-	getEventHash,
-	signEvent,
 	UnsignedEvent,
 	Event,
-	Kind
+	finishEvent,
 } from 'nostr-tools';
 import 'websocket-polyfill';
 import { NostrAPI } from './@types/nostr';
@@ -22,20 +20,23 @@ declare var window: Window & typeof globalThis;
 (function (){
 	const defaultRelays = [
 		'wss://relay-jp.nostr.wirednet.jp',
+		'wss://yabu.me',
+		'wss://r.kojira.io',
 		'wss://nrelay-jp.c-stellar.net',
-		'wss://nostr.holybea.com'
+		'wss://nostr.holybea.com',
 	];
 	const additionalRelays = [
-		'wss://yabu.me',
 		'wss://nostr-relay.nokotaro.com',
 		'wss://relay.nostr.wirednet.jp',
 		'wss://relay.damus.io',
-		'wss://nos.lol'
+		'wss://nos.lol',
 	];
 	const bottleRelays = [
 		'wss://relay-jp.nostr.wirednet.jp',
+		'wss://yabu.me',
+		'wss://r.kojira.io',
 		'wss://nrelay-jp.c-stellar.net',
-		'wss://nostr.holybea.com'
+		'wss://nostr.holybea.com',
 	];
 	const bottleKinds: number[] = [9801, 9821];
 	const defaultBottleKind = 9801;
@@ -108,7 +109,7 @@ declare var window: Window & typeof globalThis;
 				'Script': script,
 				'IfGhost': ifGhost
 			};
-			const kind: Kind = Number((<HTMLSelectElement>document.getElementById('bottle-kind')).value);
+			const kind = Number((<HTMLSelectElement>document.getElementById('bottle-kind')).value);
 			const baseEvent: UnsignedEvent = {
 				kind: kind,
 				pubkey: '',
@@ -122,29 +123,11 @@ declare var window: Window & typeof globalThis;
 				newEvent = await window.nostr.signEvent(baseEvent);
 			}
 			else {
-				baseEvent.pubkey = pk;
-				newEvent = {
-					kind: baseEvent.kind,
-					pubkey: baseEvent.pubkey,
-					created_at: baseEvent.created_at,
-					tags: baseEvent.tags,
-					content: baseEvent.content,
-					id: '',
-					sig: ''
-				};
-				newEvent.id = getEventHash(baseEvent);
-				newEvent.sig = signEvent(baseEvent, sk);
+				newEvent = finishEvent(baseEvent, sk);
 			}
-			const pubs = pool.publish(bottleRelays, newEvent);
-			pubs.on('ok', () => {
-				console.log('Send Bottle: ', contentDict);
-				bottleScript.value = '';
-				bottleSend.disabled = false;
-			});
-			pubs.on('failed', (reason: any) => {
-				console.log('Send Bottle Failed: ', reason);
-				bottleSend.disabled = false;
-			});
+			await pool.publish(bottleRelays, newEvent);
+			bottleScript.value = '';
+			bottleSend.disabled = false;
 		});
 		//タブ切り替え
 		const radioBtns = <NodeListOf<HTMLInputElement>>document.querySelectorAll('.tabs > input[type="radio"]');
@@ -178,7 +161,7 @@ declare var window: Window & typeof globalThis;
 				loginWithNip07.addEventListener('change', async (e) => {
 					const pubkeyInput = <HTMLInputElement>document.getElementById('pubkey');
 					if (loginWithNip07.checked) {
-						const npub = await window.nostr?.getPublicKey()
+						const npub = await window.nostr?.getPublicKey();
 						if (npub !== undefined) {
 							pubkeyInput.value = nip19.npubEncode(npub);
 							pubkeyInput.dispatchEvent(new Event('change'));
@@ -397,16 +380,17 @@ declare var window: Window & typeof globalThis;
 				if (gotF3) {
 					return;
 				}
-				gotF3 = true;
 				let relays: any;
+				const relaysa: string[] = [];
 				try {
 					relays = JSON.parse(eventF3.content);
 				} catch (error) {
 					console.log(error);
 					console.log(eventF3);
+					//TODO:NIP-65
 					return;
 				}
-				const relaysa: string[] = [];
+				gotF3 = true;
 				const followings: string[] = [];
 				eventF3.tags.forEach((tag: string[]) => {
 					if (tag[0] == 'p') {
@@ -750,10 +734,9 @@ declare var window: Window & typeof globalThis;
 	}
 	//ボトル用リレーに繋ぐ
 	function connectBottleRelay(relays: string[], kind: number) {
-		//1ヶ月以内の投稿を取得
 		const f: Filter = {
 			kinds: [kind],
-			since: Math.floor(Date.now() / 1000) - 30 * 24 *60 * 60,
+//			since: Math.floor(Date.now() / 1000) - 30 * 24 *60 * 60,
 			limit: 20
 		};
 		const subsCon = pool.sub(relays, [f]);
