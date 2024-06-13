@@ -1,21 +1,24 @@
+import type { SubCloser } from 'nostr-tools/abstract-pool';
+import type { Filter } from 'nostr-tools/filter';
+import { SimplePool } from 'nostr-tools/pool';
+import type { WindowNostr } from 'nostr-tools/nip07';
+import * as nip19 from 'nostr-tools/nip19';
 import {
-	Filter,
-	SimplePool,
-	nip19,
-	Sub,
-	generatePrivateKey,
+	type Event,
+	generateSecretKey,
 	getPublicKey,
 	UnsignedEvent,
-	Event,
-	finishEvent,
-} from 'nostr-tools';
-import 'websocket-polyfill';
-import { NostrAPI } from './@types/nostr';
-interface Window {
-	nostr?: NostrAPI;
-	api?: any;
+	finalizeEvent,
+} from 'nostr-tools/pure';
+//import { useWebSocketImplementation } from 'nostr-tools/pool';
+//import WebSocket from 'ws';
+//useWebSocketImplementation(WebSocket);
+
+declare global {
+	interface Window {
+		nostr?: WindowNostr;
+	}
 }
-declare var window: Window & typeof globalThis;
 
 (function (){
 	const defaultRelays = [
@@ -53,11 +56,11 @@ declare var window: Window & typeof globalThis;
 		second: '2-digit'
 	});
 	//使い捨ての秘密鍵で投稿するものとする
-	const sk = generatePrivateKey();
+	const sk = generateSecretKey();
 	const pk = getPublicKey(sk);
 
 	//このsubsは全スコープで使い回す
-	let subsBase: Sub;
+	let subsBase: SubCloser;
 	//起動中のゴーストを検索
 	let ghostNames: string[] = [];
 	let keroNames: string[] = [];
@@ -123,9 +126,9 @@ declare var window: Window & typeof globalThis;
 				newEvent = await window.nostr.signEvent(baseEvent);
 			}
 			else {
-				newEvent = finishEvent(baseEvent, sk);
+				newEvent = finalizeEvent(baseEvent, sk);
 			}
-			await pool.publish(bottleRelays, newEvent);
+			pool.publish(bottleRelays, newEvent);
 			bottleScript.value = '';
 			bottleSend.disabled = false;
 		});
@@ -136,11 +139,11 @@ declare var window: Window & typeof globalThis;
 				if (radio.checked) {
 					const kind: number = Number((<HTMLSelectElement>document.getElementById('bottle-kind')).value);
 					if (radio.id == 'global' || radio.id == 'following') {
-						subsBase.unsub();
+						subsBase.close();
 						subsBase = connectRelay(defaultRelays);
 					}
 					else if (radio.id == 'bottle') {
-						subsBase.unsub();
+						subsBase.close();
 						subsBase = connectBottleRelay(bottleRelays, kind);
 					}
 				}
@@ -148,7 +151,7 @@ declare var window: Window & typeof globalThis;
 		});
 		(<HTMLSelectElement>document.getElementById('bottle-kind')).addEventListener('change', () => {
 			const kind: number = Number((<HTMLSelectElement>document.getElementById('bottle-kind')).value);
-			subsBase.unsub();
+			subsBase.close();
 			subsBase = connectBottleRelay(bottleRelays, kind);
 		});
 		(window as EventTarget).addEventListener('load', () => {
@@ -196,8 +199,7 @@ declare var window: Window & typeof globalThis;
 								Array.from((<HTMLSelectElement>document.getElementById('bottle-relay')).options).forEach(option => {
 									tRelays.push(option.value);
 								});
-								const subsF0 = pool.sub(tRelays, [f0]);
-								subsF0.on('event', (eventF0: Event) => {
+								const onevent = (eventF0: Event) => {
 									const c: any = JSON.parse(eventF0.content);
 									const dt = <HTMLElement>document.getElementById('bottle-profile-dt');
 									dt.innerHTML = '';
@@ -232,10 +234,11 @@ declare var window: Window & typeof globalThis;
 											}
 										});
 									}
-								});
-								subsF0.on('eose', () => {
-									subsF0.unsub();
-								});
+								};
+								const oneose = () => {
+									subsF0.close();
+								};
+								const subsF0 = pool.subscribeMany(tRelays, [f0], { onevent, oneose });
 							}
 						})();
 					}
@@ -343,6 +346,7 @@ declare var window: Window & typeof globalThis;
 
 	//初回接続
 	const pool = new SimplePool();
+	pool.trackRelays = true;
 	subsBase = connectRelay(defaultRelays);
 	//ts-doneで実行する際はDOM操作はできない
 	if (hasDOM) {
@@ -351,7 +355,7 @@ declare var window: Window & typeof globalThis;
 		//公開鍵の入力に反応
 		const pubkeyInput = <HTMLInputElement>document.getElementById('pubkey');
 
-		let subsFollowing: Sub;
+		let subsFollowing: SubCloser;
 		pubkeyInput.addEventListener('change', () => {
 			const {type, data} = nip19.decode(pubkeyInput.value);
 			let pubkey: string = '';
@@ -374,9 +378,8 @@ declare var window: Window & typeof globalThis;
 			Array.from((<HTMLSelectElement>document.getElementById('following-relay')).options).forEach(option => {
 				tRelays.push(option.value);
 			});
-			const subsF3 = pool.sub(Array.from(new Set(tRelays)), [f3]);
 			let gotF3 = false;
-			subsF3.on('event', async (eventF3: Event) => {
+			const onevent = async (eventF3: Event) => {
 				if (gotF3) {
 					return;
 				}
@@ -420,8 +423,7 @@ declare var window: Window & typeof globalThis;
 					authors: [pubkey],
 					limit: 1
 				};
-				const subsF0 = pool.sub(relaysa, [f0]);
-				subsF0.on('event', (eventF0: Event) => {
+				const onevent21 = (eventF0: Event) => {
 					const c: any = JSON.parse(eventF0.content);
 					const dt = <HTMLElement>document.getElementById('profile-dt');
 					dt.innerHTML = '';
@@ -441,10 +443,11 @@ declare var window: Window & typeof globalThis;
 					const dd = <HTMLElement>document.getElementById('profile-dd');
 					dd.innerHTML = '';
 					dd.appendChild(document.createTextNode(c.about));
-				});
-				subsF0.on('eose', () => {
-					subsF0.unsub();
-				});
+				};
+				const oneose21 = () => {
+					subsF0.close();
+				};
+				const subsF0 = pool.subscribeMany(relaysa, [f0], { onevent: onevent21, oneose: oneose21 });
 				followings.push(pubkey);
 				const f1: Filter = {
 					kinds: [1],
@@ -452,22 +455,23 @@ declare var window: Window & typeof globalThis;
 					since: Math.floor(Date.now() / 1000) - 30 * 60,
 					limit: 20
 				};
-				const subsF1 = pool.sub(relaysa, [f1]);
 				const dl = <HTMLElement>document.getElementById('following-tl');
 				dl.innerHTML = '';
-				subsF1.on('event', (eventF1: Event) => {
+				const onevent22 = (eventF1: Event) => {
 					makeTL('following', relaysa, eventF1);
-				});
-				subsF1.on('eose', () => {
-				});
+				};
+				const oneose22 = () => {
+				};
+				const subsF1 = pool.subscribeMany(relaysa, [f1], { onevent: onevent22, oneose: oneose22 });
 				if (subsFollowing) {
-					subsFollowing.unsub();
+					subsFollowing.close();
 				}
 				subsFollowing = subsF1;
-			});
-			subsF3.on('eose', () => {
-				subsF3.unsub();
-			});
+			};
+			const oneose = () => {
+				subsF3.close();
+			};
+			const subsF3 = pool.subscribeMany(Array.from(new Set(tRelays)), [f3], { onevent, oneose });
 		});
 	}
 
@@ -480,9 +484,8 @@ declare var window: Window & typeof globalThis;
 			kinds: [0],
 			authors: [event.pubkey]
 		};
-		const subs2 = pool.sub(relays, [f2]);
 		let added: boolean = false;
-		subs2.on('event', (event2: Event) => {
+		const onevent = (event2: Event) => {
 			if (!event.id) {
 				return;
 			}
@@ -577,11 +580,11 @@ declare var window: Window & typeof globalThis;
 			//relay
 			const ulFrom = <HTMLUListElement>document.createElement('ul');
 			ulFrom.className = 'relay';
-			pool.seenOn(event.id).forEach(relay => {
+			for (const relay of pool.seenOn.get(event.id) ?? []) {
 				const liFrom = <HTMLLIElement>document.createElement('li');
-				liFrom.textContent = relay;
+				liFrom.textContent = relay.url;
 				ulFrom.appendChild(liFrom);
-			});
+			}
 			dd.appendChild(ulFrom);
 			const dl = <HTMLElement>document.getElementById(tabID + '-tl');
 			//情報をためておく
@@ -626,10 +629,11 @@ declare var window: Window & typeof globalThis;
 			if ((<HTMLInputElement>document.getElementById(tabID)).checked && isNewest) {
 				sendSSTP(event.content, '', profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
 			}
-		});
-		subs2.on('eose', () => {
-			subs2.unsub();
-		});
+		};
+		const oneose = () => {
+			subs2.close();
+		};
+		const subs2 = pool.subscribeMany(relays, [f2], { onevent, oneose });
 	}
 
 	function makeBottleTL(tabID: string, event: Event) {
@@ -669,11 +673,11 @@ declare var window: Window & typeof globalThis;
 		//relay
 		const ulFrom = <HTMLUListElement>document.createElement('ul');
 		ulFrom.className = 'relay';
-		pool.seenOn(event.id).forEach(relay => {
+		for (const relay of pool.seenOn.get(event.id) ?? []) {
 			const liFrom = <HTMLLIElement>document.createElement('li');
-			liFrom.textContent = relay;
+			liFrom.textContent = relay.url;
 			ulFrom.appendChild(liFrom);
-		});
+		}
 		dd.appendChild(ulFrom);
 		const dl = <HTMLElement>document.getElementById(tabID + '-tl');
 		//重複表示回避
@@ -721,14 +725,16 @@ declare var window: Window & typeof globalThis;
 			since: Math.floor(Date.now() / 1000) - 30 * 60,
 			limit: 20
 		};
-		const subsCon = pool.sub(relays, [f]);
 		if (hasDOM) {
 			const dl = <HTMLElement>document.getElementById('global-tl');
 			dl.innerHTML = '';
 		}
-		subsCon.on('event', (event: Event) => {
+		const onevent = (event: Event) => {
 			makeTL('global', relays, event);
-		});
+		};
+		const oneose = () => {
+		};
+		const subsCon = pool.subscribeMany(relays, [f], { onevent, oneose });
 		//このsubsは全スコープで使い回す必要があるためreturnしてあげる
 		return subsCon;
 	}
@@ -739,16 +745,16 @@ declare var window: Window & typeof globalThis;
 //			since: Math.floor(Date.now() / 1000) - 30 * 24 *60 * 60,
 			limit: 20
 		};
-		const subsCon = pool.sub(relays, [f]);
 		if (hasDOM) {
 			const dl = <HTMLElement>document.getElementById('bottle-tl');
 			dl.innerHTML = '';
 		}
-		subsCon.on('event', (event: Event) => {
+		const onevent = (event: Event) => {
 			makeBottleTL('bottle', event);
-		});
-		subsCon.on('eose', () => {
-		});
+		};
+		const oneose = () => {
+		};
+		const subsCon = pool.subscribeMany(relays, [f], { onevent, oneose });
 		//このsubsは全スコープで使い回す必要があるためreturnしてあげる
 		return subsCon;
 	}
@@ -811,7 +817,7 @@ declare var window: Window & typeof globalThis;
 				newRelays.push(option.value);
 			});
 			//改めてリレーに繋ぎ直す
-			subsBase.unsub();
+			subsBase.close();
 			subsBase = connectRelay(newRelays);
 		}
 	}

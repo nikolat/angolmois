@@ -2,8 +2,8 @@
 	"compilerOptions": {
 		"sourceMap": true,
 		"target": "es2015",
-		"module": "CommonJS",
+		"module": "ES2015",
 		"strict": true,
-		"moduleResolution": "node"
+		"moduleResolution": "Bundler"
 	}
 }
