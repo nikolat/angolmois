@@ -292,18 +292,29 @@ declare global {
 	}
 
 	//DirectSSTPを送信する関数
-	async function sendSSTP(note: string, ifGhost: string, name?: string, display_name?: string, picture?: string) {
+	async function sendSSTP(content: string, ifGhost: string, name?: string, display_name?: string, picture?: string, note?: string, npub?: string) {
 		if (!(<HTMLInputElement>document.getElementById('sstp-enable')).checked) {
 			return;
 		}
 		const index = (<HTMLSelectElement>document.getElementById('sstp-target')).selectedIndex;
 		const hwnd = hwnds[index];
-		const script = '\\0' + note.replace(/\\/g, '\\\\').replace(/\n/g, '\\n') + '\\e';
-		if (name) {
-			const res: string = await SSTPSend([hwnd, script, ifGhost, note.replace(/\n/g, '\\n'), name, display_name, picture]);
+		const script = '\\0' + content.replace(/\\/g, '\\\\').replace(/\n/g, '\\n') + '\\e';
+		if (!ifGhost) {
+			const res: string = await SSTPSend([
+				hwnd,
+				script,
+				ifGhost,
+				1,
+				content.replace(/\n/g, '\\n'),
+				name,
+				display_name,
+				picture,
+				note,
+				npub,
+			]);
 		}
 		else {
-			const res: string = await SSTPSend([hwnd, note.replace(/\n/g, '\\n'), ifGhost]);
+			const res: string = await SSTPSend([hwnd, content.replace(/\n/g, '\\n'), ifGhost]);
 		}
 	}
 
@@ -322,7 +333,7 @@ declare global {
 			mes.push(`IfGhost: ${ifGhost}`);
 		}
 		mes.push(`Script: ${script}`);
-		mes.push(`Reference0: ${(ifGhost ? 'Nostr-Bottle/0.1' : 'Nostr/0.1')}`);
+		mes.push(`Reference0: ${(ifGhost ? 'Nostr-Bottle/0.1' : 'Nostr/0.4')}`);
 		for (let i = 3; i < data.length; i++) {
 			mes.push(`Reference${(i - 2)}: ${data[i]}`);
 		}
@@ -561,7 +572,15 @@ declare global {
 			const SSTPButton = document.createElement('button');
 			SSTPButton.textContent = 'Send SSTP';
 			SSTPButton.addEventListener('click', function(ev: MouseEvent) {
-				sendSSTP(event.content, '', profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
+				sendSSTP(
+					event.content,
+					'',
+					profile.name ?? '',
+					profile.display_name ?? '',
+					profile.picture ?? '',
+					nip19.noteEncode(event.id),
+					nip19.npubEncode(event.pubkey),
+				);
 			});
 			dt.appendChild(SSTPButton);
 			//Change ID Button
@@ -627,7 +646,15 @@ declare global {
 			}
 			//ゴーストにDirectSSTPを送信
 			if ((<HTMLInputElement>document.getElementById(tabID)).checked && isNewest) {
-				sendSSTP(event.content, '', profile.name ? profile.name : '', profile.display_name ? profile.display_name : '', profile.picture ? profile.picture : '');
+				sendSSTP(
+					event.content,
+					'',
+					profile.name ?? '',
+					profile.display_name ?? '',
+					profile.picture ?? '',
+					nip19.noteEncode(event.id),
+					nip19.npubEncode(event.pubkey),
+				);
 			}
 		};
 		const oneose = () => {

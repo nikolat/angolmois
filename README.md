@@ -11,7 +11,7 @@ Nostrリレーから投稿を取得して表示するWebアプリです。
 1. 下記のサイトから最新版のSSPをダウンロードしssp.exeを起動します。  
   [独立伺か研究施設 ばぐとら研究所](http://ssp.shillest.net/)
 2. [アンゴルモア](https://nikolat.github.io/angolmois/)を開きます。
-3. しばらくすると投稿が表示され、同時に起動しているゴーストが投稿内容を喋り出します。
+3. 「SSTPを有効化する」にチェックを入れると投稿が表示され、同時に起動しているゴーストが投稿内容を喋り出します。
 
 ### ゴースト側のカスタマイズ(伺か経験者向け)
 angolmoisは[SSTP](http://ssp.shillest.net/ukadoc/manual/spec_sstp.html) over HTTPによりSSTPサーバーと通信を行います。  
@@ -24,23 +24,27 @@ Sender: angolmois
 Event: OnNostr
 Option: nobreak
 Script: \0おはノスー！\e
-Reference0: Nostr/0.1
-Reference1: おはノスー！
-Reference2: nosuta
-Reference3: のす太
-Reference4: https://sample.com/avatar.png
+Reference0: Nostr/0.4
+Reference1: 1
+Reference2: おはノスー！
+Reference3: nosuta
+Reference4: のす太
+Reference5: https://sample.com/avatar.png
+Reference6: note1...
+Reference7: npub1...
 ```
-ゴーストはOnNostrイベントに対して独自に[SakuraScript](http://ssp.shillest.net/ukadoc/manual/list_sakura_script.html)を応答することで通知内容をカスタマイズして表現することができます。  
+ゴーストは[OnNostrイベント](https://ssp.shillest.net/ukadoc/manual/list_shiori_event_ex.html#OnNostr)に対して独自に[SakuraScript](http://ssp.shillest.net/ukadoc/manual/list_sakura_script.html)を応答することで通知内容をカスタマイズして表現することができます。  
 以下に[YAYA](https://github.com/YAYA-shiori/yaya-shiori/wiki)による応答実装例を示します。  
 ```
 ExternalEvent.OnNostr
 {
 	_protocol_version = reference[0]
-	if _protocol_version != 'Nostr/0.1'
+	_kind = reference[1]
+	if _protocol_version != 'Nostr/0.4' || _kind != 1
 		return
-	_note = reference[1]
-	_name = reference[2]
-	_display_name = reference[3]
+	_note = reference[2]
+	_name = reference[3]
+	_display_name = reference[4]
 	"\C\0\_q\f[bold,true]%(SHIORI3FW.EscapeAllTags(_display_name))\f[bold,default] /
 		@%(SHIORI3FW.EscapeAllTags(_name))\n/
 		%(SHIORI3FW.EscapeDangerousTags(_note))/
