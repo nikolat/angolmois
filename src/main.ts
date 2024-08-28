@@ -24,10 +24,8 @@ declare global {
     'wss://yabu.me',
     'wss://r.kojira.io',
     'wss://nrelay-jp.c-stellar.net',
-    'wss://nostr.holybea.com',
   ];
   const additionalRelays = [
-    'wss://nostr-relay.nokotaro.com',
     'wss://relay.nostr.wirednet.jp',
     'wss://relay.damus.io',
     'wss://nos.lol',
@@ -37,7 +35,6 @@ declare global {
     'wss://yabu.me',
     'wss://r.kojira.io',
     'wss://nrelay-jp.c-stellar.net',
-    'wss://nostr.holybea.com',
   ];
   const bottleKinds: number[] = [9801, 9821];
   const defaultBottleKind = 9801;
@@ -55,7 +52,6 @@ declare global {
   });
   //使い捨ての秘密鍵で投稿するものとする
   const sk = generateSecretKey();
-  const pk = getPublicKey(sk);
 
   //このsubsは全スコープで使い回す
   let subsBase: SubCloser;
