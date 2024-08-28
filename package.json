@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "nostr-tools": "^2.7.2",
+    "rx-nostr": "^3.4.0",
+    "rx-nostr-crypto": "^3.1.2",
     "ws": "^8.18.0"
   },
   "devDependencies": {

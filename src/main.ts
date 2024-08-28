@@ -1,6 +1,4 @@
-import type { SubCloser } from 'nostr-tools/abstract-pool';
 import type { Filter } from 'nostr-tools/filter';
-import { SimplePool } from 'nostr-tools/pool';
 import type { WindowNostr } from 'nostr-tools/nip07';
 import * as nip19 from 'nostr-tools/nip19';
 import {
@@ -9,6 +7,14 @@ import {
   UnsignedEvent,
   finalizeEvent,
 } from 'nostr-tools/pure';
+import {
+  createRxBackwardReq,
+  createRxForwardReq,
+  createRxNostr,
+  createTie,
+  EventPacket,
+} from 'rx-nostr';
+import { verifier } from 'rx-nostr-crypto';
 import './style.css';
 
 declare global {
@@ -51,8 +57,6 @@ declare global {
   //使い捨ての秘密鍵で投稿するものとする
   const sk = generateSecretKey();
 
-  //このsubsは全スコープで使い回す
-  let subsBase: SubCloser;
   //起動中のゴーストを検索
   let ghostNames: string[] = [];
   let keroNames: string[] = [];
@@ -136,7 +140,8 @@ declare global {
     } else {
       newEvent = finalizeEvent(baseEvent, sk);
     }
-    pool.publish(bottleRelays, newEvent);
+    rxNostr.setDefaultRelays(bottleRelays);
+    rxNostr.send(newEvent);
     bottleScript.value = '';
     bottleSend.disabled = false;
   });
@@ -151,11 +156,9 @@ declare global {
           (<HTMLSelectElement>document.getElementById('bottle-kind')).value,
         );
         if (radio.id == 'global' || radio.id == 'following') {
-          subsBase.close();
-          subsBase = connectRelay(defaultRelays);
+          connectRelay(defaultRelays);
         } else if (radio.id == 'bottle') {
-          subsBase.close();
-          subsBase = connectBottleRelay(bottleRelays, kind);
+          connectBottleRelay(bottleRelays, kind);
         }
       }
     });
@@ -166,8 +169,7 @@ declare global {
       const kind: number = Number(
         (<HTMLSelectElement>document.getElementById('bottle-kind')).value,
       );
-      subsBase.close();
-      subsBase = connectBottleRelay(bottleRelays, kind);
+      connectBottleRelay(bottleRelays, kind);
     },
   );
   (window as EventTarget).addEventListener('load', () => {
@@ -206,26 +208,26 @@ declare global {
                 limit: 1,
               };
               //グローバルのリレーとフォロー中リレーとボトル用リレーから取得する
-              const tRelays: string[] = [];
-              Array.from(
-                (<HTMLSelectElement>document.getElementById('enabled-relay'))
-                  .options,
-              ).forEach((option) => {
-                tRelays.push(option.value);
-              });
-              Array.from(
-                (<HTMLSelectElement>document.getElementById('following-relay'))
-                  .options,
-              ).forEach((option) => {
-                tRelays.push(option.value);
-              });
-              Array.from(
-                (<HTMLSelectElement>document.getElementById('bottle-relay'))
-                  .options,
-              ).forEach((option) => {
-                tRelays.push(option.value);
-              });
-              const onevent = (eventF0: NostrEvent) => {
+              const tRelays: string[] = Array.from(
+                new Set([
+                  ...Array.from(
+                    (<HTMLSelectElement>(
+                      document.getElementById('enabled-relay')
+                    )).options,
+                  ).map((o) => o.value),
+                  ...Array.from(
+                    (<HTMLSelectElement>(
+                      document.getElementById('following-relay')
+                    )).options,
+                  ).map((o) => o.value),
+                  ...Array.from(
+                    (<HTMLSelectElement>document.getElementById('bottle-relay'))
+                      .options,
+                  ).map((o) => o.value),
+                ]),
+              );
+              const onevent = (packet: EventPacket) => {
+                const eventF0: NostrEvent = packet.event;
                 const c: any = JSON.parse(eventF0.content);
                 const dt = <HTMLElement>(
                   document.getElementById('bottle-profile-dt')
@@ -270,13 +272,15 @@ declare global {
                   });
                 }
               };
-              const oneose = () => {
-                subsF0.close();
-              };
-              const subsF0 = pool.subscribeMany(tRelays, [f0], {
-                onevent,
-                oneose,
-              });
+              const oneose = () => {};
+              rxNostr.setDefaultRelays(tRelays);
+              const rxReq = createRxBackwardReq();
+              rxNostr
+                .use(rxReq)
+                .pipe(tie)
+                .subscribe({ next: onevent, complete: oneose });
+              rxReq.emit(f0);
+              rxReq.over();
             }
           })();
         } else {
@@ -421,16 +425,15 @@ declare global {
   }
 
   //初回接続
-  const pool = new SimplePool();
-  pool.trackRelays = true;
-  subsBase = connectRelay(defaultRelays);
-  //ts-doneで実行する際はDOM操作はできない
+  const rxNostr = createRxNostr({ verifier });
+  const [tie, seenOn] = createTie();
+
+  connectRelay(defaultRelays);
   //リレーをセレクトボックスに入れる
   deployRelay(defaultRelays, additionalRelays, bottleRelays, bottleKinds);
   //公開鍵の入力に反応
   const pubkeyInput = <HTMLInputElement>document.getElementById('pubkey');
 
-  let subsFollowing: SubCloser;
   pubkeyInput.addEventListener('change', () => {
     const { type, data } = nip19.decode(pubkeyInput.value);
     let pubkey: string = '';
@@ -457,7 +460,8 @@ declare global {
       tRelays.push(option.value);
     });
     let gotF3 = false;
-    const onevent = async (eventF3: NostrEvent) => {
+    const onevent = async (packet: EventPacket) => {
+      const eventF3: NostrEvent = packet.event;
       if (gotF3) {
         return;
       }
@@ -490,20 +494,13 @@ declare global {
         op.textContent = relay;
         followingRelays.add(op);
       });
-      const procs = relaysa.map((relay) => {
-        try {
-          pool.ensureRelay(relay);
-        } catch (error) {
-          console.log('ensureRelay error: ', error);
-        }
-      });
-      const ret = await Promise.all(procs);
       const f0: Filter = {
         kinds: [0],
         authors: [pubkey],
         limit: 1,
       };
-      const onevent21 = (eventF0: NostrEvent) => {
+      const onevent21 = (packet: EventPacket) => {
+        const eventF0: NostrEvent = packet.event;
         const c: any = JSON.parse(eventF0.content);
         const dt = <HTMLElement>document.getElementById('profile-dt');
         dt.innerHTML = '';
@@ -524,42 +521,57 @@ declare global {
         dd.innerHTML = '';
         dd.appendChild(document.createTextNode(c.about));
       };
-      const oneose21 = () => {
-        subsF0.close();
-      };
-      const subsF0 = pool.subscribeMany(relaysa, [f0], {
-        onevent: onevent21,
-        oneose: oneose21,
-      });
+      const oneose21 = () => {};
+      rxNostr.setDefaultRelays(relaysa);
+      const rxReq0 = createRxBackwardReq();
+      rxNostr
+        .use(rxReq0)
+        .pipe(tie)
+        .subscribe({ next: onevent21, complete: oneose21 });
+      rxReq0.emit(f0);
+      rxReq0.over();
       followings.push(pubkey);
+      const now = Math.floor(Date.now() / 1000);
       const f1: Filter = {
         kinds: [1],
         authors: followings,
-        since: Math.floor(Date.now() / 1000) - 30 * 60,
+        since: now - 30 * 60,
+        until: now,
         limit: 20,
       };
       const dl = <HTMLElement>document.getElementById('following-tl');
       dl.innerHTML = '';
-      const onevent22 = (eventF1: NostrEvent) => {
+      const onevent22 = (packet: EventPacket) => {
+        const eventF1: NostrEvent = packet.event;
         makeTL('following', relaysa, eventF1);
       };
       const oneose22 = () => {};
-      const subsF1 = pool.subscribeMany(relaysa, [f1], {
-        onevent: onevent22,
-        oneose: oneose22,
-      });
-      if (subsFollowing) {
-        subsFollowing.close();
-      }
-      subsFollowing = subsF1;
+      rxNostr.setDefaultRelays(relaysa);
+      const rxReq1 = createRxBackwardReq();
+      rxNostr
+        .use(rxReq1)
+        .pipe(tie)
+        .subscribe({ next: onevent22, complete: oneose22 });
+      rxReq1.emit(f1);
+      rxReq1.over();
+
+      const fF: Filter = {
+        kinds: [1],
+        authors: followings,
+        since: now,
+      };
+      rxNostr.setDefaultRelays(relaysa);
+      const rxReqF = createRxForwardReq();
+      rxNostr.use(rxReqF).pipe(tie).subscribe({ next: onevent22 });
+      rxReqF.emit(fF);
     };
-    const oneose = () => {
-      subsF3.close();
-    };
-    const subsF3 = pool.subscribeMany(Array.from(new Set(tRelays)), [f3], {
-      onevent,
-      oneose,
-    });
+    const oneose = () => {};
+
+    rxNostr.setDefaultRelays(tRelays);
+    const rxReq = createRxBackwardReq();
+    rxNostr.use(rxReq).pipe(tie).subscribe({ next: onevent, complete: oneose });
+    rxReq.emit(f3);
+    rxReq.over();
   });
 
   //逆引きできるよう投稿者の情報をためておく
@@ -572,7 +584,8 @@ declare global {
       authors: [event.pubkey],
     };
     let added: boolean = false;
-    const onevent = (event2: NostrEvent) => {
+    const onevent = (packet: EventPacket) => {
+      const event2: NostrEvent = packet.event;
       if (!event.id) {
         return;
       }
@@ -681,9 +694,9 @@ declare global {
       //relay
       const ulFrom = <HTMLUListElement>document.createElement('ul');
       ulFrom.className = 'relay';
-      for (const relay of pool.seenOn.get(event.id) ?? []) {
+      for (const relay of seenOn.get(event.id) ?? []) {
         const liFrom = <HTMLLIElement>document.createElement('li');
-        liFrom.textContent = relay.url;
+        liFrom.textContent = relay;
         ulFrom.appendChild(liFrom);
       }
       dd.appendChild(ulFrom);
@@ -742,10 +755,12 @@ declare global {
         );
       }
     };
-    const oneose = () => {
-      subs2.close();
-    };
-    const subs2 = pool.subscribeMany(relays, [f2], { onevent, oneose });
+    const oneose = () => {};
+    rxNostr.setDefaultRelays(relays);
+    const rxReq = createRxBackwardReq();
+    rxNostr.use(rxReq).pipe(tie).subscribe({ next: onevent, complete: oneose });
+    rxReq.emit(f2);
+    rxReq.over();
   }
 
   function makeBottleTL(tabID: string, event: NostrEvent) {
@@ -790,9 +805,9 @@ declare global {
     //relay
     const ulFrom = <HTMLUListElement>document.createElement('ul');
     ulFrom.className = 'relay';
-    for (const relay of pool.seenOn.get(event.id) ?? []) {
+    for (const relay of seenOn.get(event.id) ?? []) {
       const liFrom = <HTMLLIElement>document.createElement('li');
-      liFrom.textContent = relay.url;
+      liFrom.textContent = relay;
       ulFrom.appendChild(liFrom);
     }
     dd.appendChild(ulFrom);
@@ -840,37 +855,72 @@ declare global {
   //リレーに繋ぐ
   function connectRelay(relays: string[]) {
     //30分以内の投稿を取得
-    const f: Filter = {
+    const now = Math.floor(Date.now() / 1000);
+    const fB: Filter = {
       kinds: [1],
-      since: Math.floor(Date.now() / 1000) - 30 * 60,
+      since: now - 30 * 60,
+      until: now,
       limit: 20,
     };
     const dl = <HTMLElement>document.getElementById('global-tl');
     dl.innerHTML = '';
-    const onevent = (event: NostrEvent) => {
+    const onevent = (packet: EventPacket) => {
+      const event: NostrEvent = packet.event;
       makeTL('global', relays, event);
     };
     const oneose = () => {};
-    const subsCon = pool.subscribeMany(relays, [f], { onevent, oneose });
-    //このsubsは全スコープで使い回す必要があるためreturnしてあげる
-    return subsCon;
+
+    rxNostr.setDefaultRelays(relays);
+    const rxReqB = createRxBackwardReq();
+    rxNostr
+      .use(rxReqB)
+      .pipe(tie)
+      .subscribe({ next: onevent, complete: oneose });
+    rxReqB.emit(fB);
+    rxReqB.over();
+
+    const fF: Filter = {
+      kinds: [1],
+      since: now,
+    };
+    rxNostr.setDefaultRelays(relays);
+    const rxReqF = createRxForwardReq();
+    rxNostr.use(rxReqF).pipe(tie).subscribe({ next: onevent });
+    rxReqF.emit(fF);
   }
   //ボトル用リレーに繋ぐ
   function connectBottleRelay(relays: string[], kind: number) {
-    const f: Filter = {
+    const now = Math.floor(Date.now() / 1000);
+    const fB: Filter = {
       kinds: [kind],
-      //			since: Math.floor(Date.now() / 1000) - 30 * 24 *60 * 60,
       limit: 20,
+      until: now,
     };
     const dl = <HTMLElement>document.getElementById('bottle-tl');
     dl.innerHTML = '';
-    const onevent = (event: NostrEvent) => {
+    const onevent = (packet: EventPacket) => {
+      const event: NostrEvent = packet.event;
       makeBottleTL('bottle', event);
     };
     const oneose = () => {};
-    const subsCon = pool.subscribeMany(relays, [f], { onevent, oneose });
-    //このsubsは全スコープで使い回す必要があるためreturnしてあげる
-    return subsCon;
+
+    rxNostr.setDefaultRelays(relays);
+    const rxReqB = createRxBackwardReq();
+    rxNostr
+      .use(rxReqB)
+      .pipe(tie)
+      .subscribe({ next: onevent, complete: oneose });
+    rxReqB.emit(fB);
+    rxReqB.over();
+
+    const fF: Filter = {
+      kinds: [1],
+      since: now,
+    };
+    rxNostr.setDefaultRelays(relays);
+    const rxReqF = createRxForwardReq();
+    rxNostr.use(rxReqF).pipe(tie).subscribe({ next: onevent });
+    rxReqF.emit(fF);
   }
 
   //リレーをセレクトボックスに入れる(初回だけ呼ばれて終わり)
@@ -947,8 +997,7 @@ declare global {
         newRelays.push(option.value);
       });
       //改めてリレーに繋ぎ直す
-      subsBase.close();
-      subsBase = connectRelay(newRelays);
+      connectRelay(newRelays);
     }
   }
 })();
