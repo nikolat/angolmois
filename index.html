@@ -1,118 +1,148 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width">
-		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src wss://* http://localhost:9801/; img-src https://* data:;">
-		<title>Angolmois</title>
-		<link rel="stylesheet" href="main.css">
-	</head>
-	<body>
-		<div id="container">
-			<h1>Angolmois</h1>
-			<p>プロフィールを持たない投稿（スパム？）は非表示にしています。 by <a href="https://nostx.shino3.net/npub1dv9xpnlnajj69vjstn9n7ufnmppzq3wtaaq085kxrz0mpw2jul2qjy6uhz">nikolat@nikolat.github.io</a></p>
-			<div>
-				<fieldset>
-					<legend>SSTP</legend>
-					<label for="sstp-target">SSTP送信先ゴースト</label>
-					<select name="sstp-target" id="sstp-target">
-					</select>
-					<button id="refresh">ゴースト再検索</button>
-					<label for="sstp-enable">SSTPを有効化する</label>
-					<input id="sstp-enable" name="sstp-enable" type="checkbox">
-				</fieldset>
-			</div>
-			<div class="tabs">
-				<input id="global" type="radio" name="tab_item" checked>
-				<label class="tab_item" for="global">グローバル</label>
-				<input id="following" type="radio" name="tab_item">
-				<label class="tab_item" for="following">フォロー中</label>
-				<input id="bottle" type="radio" name="tab_item">
-				<label class="tab_item" for="bottle">ボトル</label>
-				<div class="tab_content" id="global_content">
-					<div class="tab_content_description">
-						<fieldset>
-							<legend>接続先リレー</legend>
-							<select name="enabled-relay" id="enabled-relay" size="5">
-							</select>
-							<button id="remove">削除</button>
-						</fieldset>
-						<fieldset>
-							<legend>接続候補リレー</legend>
-							<select name="disabled-relay" id="disabled-relay" size="5">
-							</select>
-							<button id="add">追加</button>
-						</fieldset>
-						<dl id="global-tl">
-							<dt>説明</dt>
-							<dd>しばらくすると上に投稿が流れて来ます。</dd>
-						</dl>
-					</div>
-				</div>
-				<div class="tab_content" id="following_content">
-					<div class="tab_content_description">
-						<fieldset>
-							<legend>フォローリスト取得元</legend>
-							<label for="pubkey">公開鍵</label>
-							<input id="pubkey" name="pubkey" type="text" size="63" minlength="63" maxlength="63" placeholder="npub...">
-							<label for="login-with-nip-07">NIP-07でログインする</label>
-							<input id="login-with-nip-07" name="login-with-nip-07" type="checkbox">
-						</fieldset>
-						<fieldset>
-							<legend>リレー情報</legend>
-							<label for="following-relay">接続先リレー</label>
-							<select name="following-relay" id="following-relay" size="5">
-							</select>
-						</fieldset>
-						<dl id="profile-dl">
-							<dt id="profile-dt">None</dt>
-							<dd id="profile-dd">None</dd>
-						</dl>
-						<dl id="following-tl">
-							<dt>説明</dt>
-							<dd>しばらくすると上に投稿が流れて来ます。</dd>
-						</dl>
-					</div>
-				</div>
-				<div class="tab_content" id="bottle_content">
-					<div class="tab_content_description">
-						<fieldset>
-							<legend>SSTP-Bottle送受信先</legend>
-							<label for="bottle-kind">送受信kind</label>
-							<select id="bottle-kind" name="bottle-kind">
-							</select>
-							<label for="bottle-relay">接続先リレー</label>
-							<select name="bottle-relay" id="bottle-relay" size="3">
-							</select>
-						</fieldset>
-						<fieldset>
-							<legend>認証</legend>
-							<label for="npub-nip-07">あなたの公開鍵</label>
-							<input id="npub-nip-07" name="npub-nip-07" type="text" size="63" minlength="63" maxlength="63" readonly>
-							<label for="use-nip-07">NIP-07を使用する</label>
-							<input id="use-nip-07" name="use-nip-07" type="checkbox">
-						</fieldset>
-						<fieldset>
-							<legend>送信</legend>
-							<label for="bottle-ifghost">IfGhost</label>
-							<select name="bottle-ifghost" id="bottle-ifghost">
-							</select>
-							<label for="bottle-script">送信スクリプト</label>
-							<textarea id="bottle-script" rows="2" cols="30"></textarea>
-							<button id="bottle-send" disabled>送信</button>
-						</fieldset>
-						<dl id="bottle-profile-dl">
-							<dt id="bottle-profile-dt"></dt>
-							<dd id="bottle-profile-dd"></dd>
-						</dl>
-						<dl id="bottle-tl">
-							<dt>説明</dt>
-							<dd>しばらくすると上に投稿が流れて来ます。</dd>
-						</dl>
-					</div>
-				</div>
-			</div>
-		</div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; connect-src wss://* http://localhost:9801/; img-src https://* data:;"
+    />
+    <title>Angolmois</title>
+    <link rel="stylesheet" href="main.css" />
+  </head>
+  <body>
+    <div id="container">
+      <h1>Angolmois</h1>
+      <p>
+        プロフィールを持たない投稿（スパム？）は非表示にしています。 by
+        <a
+          href="https://nostx.shino3.net/npub1dv9xpnlnajj69vjstn9n7ufnmppzq3wtaaq085kxrz0mpw2jul2qjy6uhz"
+          >nikolat@nikolat.github.io</a
+        >
+      </p>
+      <div>
+        <fieldset>
+          <legend>SSTP</legend>
+          <label for="sstp-target">SSTP送信先ゴースト</label>
+          <select name="sstp-target" id="sstp-target"></select>
+          <button id="refresh">ゴースト再検索</button>
+          <label for="sstp-enable">SSTPを有効化する</label>
+          <input id="sstp-enable" name="sstp-enable" type="checkbox" />
+        </fieldset>
+      </div>
+      <div class="tabs">
+        <input id="global" type="radio" name="tab_item" checked />
+        <label class="tab_item" for="global">グローバル</label>
+        <input id="following" type="radio" name="tab_item" />
+        <label class="tab_item" for="following">フォロー中</label>
+        <input id="bottle" type="radio" name="tab_item" />
+        <label class="tab_item" for="bottle">ボトル</label>
+        <div class="tab_content" id="global_content">
+          <div class="tab_content_description">
+            <fieldset>
+              <legend>接続先リレー</legend>
+              <select name="enabled-relay" id="enabled-relay" size="5"></select>
+              <button id="remove">削除</button>
+            </fieldset>
+            <fieldset>
+              <legend>接続候補リレー</legend>
+              <select
+                name="disabled-relay"
+                id="disabled-relay"
+                size="5"
+              ></select>
+              <button id="add">追加</button>
+            </fieldset>
+            <dl id="global-tl">
+              <dt>説明</dt>
+              <dd>しばらくすると上に投稿が流れて来ます。</dd>
+            </dl>
+          </div>
+        </div>
+        <div class="tab_content" id="following_content">
+          <div class="tab_content_description">
+            <fieldset>
+              <legend>フォローリスト取得元</legend>
+              <label for="pubkey">公開鍵</label>
+              <input
+                id="pubkey"
+                name="pubkey"
+                type="text"
+                size="63"
+                minlength="63"
+                maxlength="63"
+                placeholder="npub..."
+              />
+              <label for="login-with-nip-07">NIP-07でログインする</label>
+              <input
+                id="login-with-nip-07"
+                name="login-with-nip-07"
+                type="checkbox"
+              />
+            </fieldset>
+            <fieldset>
+              <legend>リレー情報</legend>
+              <label for="following-relay">接続先リレー</label>
+              <select
+                name="following-relay"
+                id="following-relay"
+                size="5"
+              ></select>
+            </fieldset>
+            <dl id="profile-dl">
+              <dt id="profile-dt">None</dt>
+              <dd id="profile-dd">None</dd>
+            </dl>
+            <dl id="following-tl">
+              <dt>説明</dt>
+              <dd>しばらくすると上に投稿が流れて来ます。</dd>
+            </dl>
+          </div>
+        </div>
+        <div class="tab_content" id="bottle_content">
+          <div class="tab_content_description">
+            <fieldset>
+              <legend>SSTP-Bottle送受信先</legend>
+              <label for="bottle-kind">送受信kind</label>
+              <select id="bottle-kind" name="bottle-kind"></select>
+              <label for="bottle-relay">接続先リレー</label>
+              <select name="bottle-relay" id="bottle-relay" size="3"></select>
+            </fieldset>
+            <fieldset>
+              <legend>認証</legend>
+              <label for="npub-nip-07">あなたの公開鍵</label>
+              <input
+                id="npub-nip-07"
+                name="npub-nip-07"
+                type="text"
+                size="63"
+                minlength="63"
+                maxlength="63"
+                readonly
+              />
+              <label for="use-nip-07">NIP-07を使用する</label>
+              <input id="use-nip-07" name="use-nip-07" type="checkbox" />
+            </fieldset>
+            <fieldset>
+              <legend>送信</legend>
+              <label for="bottle-ifghost">IfGhost</label>
+              <select name="bottle-ifghost" id="bottle-ifghost"></select>
+              <label for="bottle-script">送信スクリプト</label>
+              <textarea id="bottle-script" rows="2" cols="30"></textarea>
+              <button id="bottle-send" disabled>送信</button>
+            </fieldset>
+            <dl id="bottle-profile-dl">
+              <dt id="bottle-profile-dt"></dt>
+              <dd id="bottle-profile-dd"></dd>
+            </dl>
+            <dl id="bottle-tl">
+              <dt>説明</dt>
+              <dd>しばらくすると上に投稿が流れて来ます。</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
-	</body>
+  </body>
 </html>

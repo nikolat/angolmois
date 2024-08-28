@@ -1,9 +1,9 @@
 {
-	"compilerOptions": {
-		"sourceMap": true,
-		"target": "ESNext",
-		"module": "ESNext",
-		"strict": true,
-		"moduleResolution": "Bundler"
-	}
+  "compilerOptions": {
+    "sourceMap": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "strict": true,
+    "moduleResolution": "Bundler"
+  }
 }

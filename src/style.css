@@ -1,126 +1,126 @@
 @charset "utf-8";
 
 body {
-	color: #7c7;
-	background-color: #454;
+  color: #7c7;
+  background-color: #454;
 }
 a:link {
-	color: #474;
+  color: #474;
 }
 a:visited {
-	color: #7a7;
+  color: #7a7;
 }
 a:hover {
-	color: #ccc;
+  color: #ccc;
 }
 a:active {
-	color: #111;
+  color: #111;
 }
 #container {
-	background-color: #232;
-	padding: 1em;
+  background-color: #232;
+  padding: 1em;
 }
 #container #global_content fieldset {
-	max-width: calc(100%/2.5);
-	float: left;
+  max-width: calc(100% / 2.5);
+  float: left;
 }
 #container #bottle_content fieldset {
-	float: left;
+  float: left;
 }
 #container select {
-	vertical-align: top;
-	min-width: 20em;
+  vertical-align: top;
+  min-width: 20em;
 }
 #container textarea {
-	vertical-align: top;
-	min-width: 40em;
-	min-height: 5em;
+  vertical-align: top;
+  min-width: 40em;
+  min-height: 5em;
 }
 /**
  * https://bagelee.com/design/css/create_tabs_using_only_css/
  */
 /*タブ切り替え全体のスタイル*/
 .tabs {
-	clear: left;
-	margin: 0 auto;
-	border-left: #454 1px solid;
-	border-right: #454 1px solid;
-	border-bottom: #454 1px solid;
+  clear: left;
+  margin: 0 auto;
+  border-left: #454 1px solid;
+  border-right: #454 1px solid;
+  border-bottom: #454 1px solid;
 }
 /*タブのスタイル*/
 .tab_item {
-	width: calc(100%/3);
-	height: 3em;
-	background-color: #454;
-	line-height: 3em;
-	text-align: center;
-	display: block;
-	float: left;
-	text-align: center;
-	font-weight: bold;
+  width: calc(100% / 3);
+  height: 3em;
+  background-color: #454;
+  line-height: 3em;
+  text-align: center;
+  display: block;
+  float: left;
+  text-align: center;
+  font-weight: bold;
 }
 .tab_item:hover {
-	opacity: 0.75;
+  opacity: 0.75;
 }
 /*ラジオボタンを全て消す*/
 input[name="tab_item"] {
-	display: none;
+  display: none;
 }
 /*タブ切り替えの中身のスタイル*/
 .tab_content {
-	display: none;
-	clear: both;
-	overflow: hidden;
+  display: none;
+  clear: both;
+  overflow: hidden;
 }
 /*選択されているタブのコンテンツのみを表示*/
 #global:checked ~ #global_content,
 #following:checked ~ #following_content,
 #bottle:checked ~ #bottle_content {
-		display: block;
+  display: block;
 }
 /*選択されているタブのスタイルを変える*/
 .tabs input:checked + .tab_item {
-	background-color: #468;
-	color: #7c7;
+  background-color: #468;
+  color: #7c7;
 }
 
 #container dl {
-	clear: left;
-	margin-block-start: 0;
-	margin-block-end: 0;
+  clear: left;
+  margin-block-start: 0;
+  margin-block-end: 0;
 }
 #container dl#profile-dl {
-	background-color: #233;
+  background-color: #233;
 }
 #container dt {
-	border-top: #aaa 1px solid;
-	padding-top: 5px;
-	clear: left;
+  border-top: #aaa 1px solid;
+  padding-top: 5px;
+  clear: left;
 }
 #container dt img {
-	border-radius: 25px;
-	margin-right: 1em;
-	float: left;
+  border-radius: 25px;
+  margin-right: 1em;
+  float: left;
 }
 #container dt a {
-	border-radius: 25px;
-	margin-left: 1em;
+  border-radius: 25px;
+  margin-left: 1em;
 }
 #container dt time {
-	color: #aaa;
-	font-size: small;
-	margin-left: 1em;
+  color: #aaa;
+  font-size: small;
+  margin-left: 1em;
 }
 #container dt button {
-	float: right;
+  float: right;
 }
 #container dd {
-	word-break: break-all;
-	clear: right;
-	white-space: pre-wrap;
-	margin-left: 70px;
+  word-break: break-all;
+  clear: right;
+  white-space: pre-wrap;
+  margin-left: 70px;
 }
 #container dd ul.relay {
-	font-size: xx-small;
-	color: #aaa;
+  font-size: xx-small;
+  color: #aaa;
 }
