@@ -4,9 +4,8 @@ import { SimplePool } from 'nostr-tools/pool';
 import type { WindowNostr } from 'nostr-tools/nip07';
 import * as nip19 from 'nostr-tools/nip19';
 import {
-  type Event,
+  type NostrEvent,
   generateSecretKey,
-  getPublicKey,
   UnsignedEvent,
   finalizeEvent,
 } from 'nostr-tools/pure';
@@ -41,7 +40,6 @@ declare global {
   const iconSize = 50;
   const baseLinkURL = 'https://nostx.shino3.net/';
   const sspServerURL = 'http://localhost:9801';
-  const hasDOM: boolean = typeof window === 'object';
   const dtformat = new Intl.DateTimeFormat('ja-jp', {
     year: 'numeric',
     month: '2-digit',
@@ -60,300 +58,284 @@ declare global {
   let keroNames: string[] = [];
   let hwnds: string[] = [];
 
-  if (hasDOM) {
-    function ReceiveGhostInfo(data: string[][]) {
-      hwnds = data[0];
-      ghostNames = data[1];
-      keroNames = data[2];
-      //ドロップダウンメニューに配置
-      const sstpTarget = <HTMLSelectElement>(
-        document.getElementById('sstp-target')
-      );
-      const ifGhost = <HTMLSelectElement>(
-        document.getElementById('bottle-ifghost')
-      );
-      const n = sstpTarget.childElementCount;
-      for (let i = 0; i < n; i++) {
-        sstpTarget.remove(0);
-        ifGhost.remove(0);
-      }
-      for (let i = 0; i < ghostNames.length; i++) {
-        const optionSstpTarget = <HTMLOptionElement>(
-          document.createElement('option')
-        );
-        optionSstpTarget.setAttribute('value', ghostNames[i]);
-        optionSstpTarget.appendChild(document.createTextNode(ghostNames[i]));
-        sstpTarget.appendChild(optionSstpTarget);
-        const optionIgGhost = <HTMLOptionElement>(
-          document.createElement('option')
-        );
-        optionIgGhost.setAttribute('value', ghostNames[i] + ',' + keroNames[i]);
-        optionIgGhost.appendChild(
-          document.createTextNode(ghostNames[i] + ',' + keroNames[i]),
-        );
-        ifGhost.appendChild(optionIgGhost);
-      }
-      const bottleSend = <HTMLButtonElement>(
-        document.getElementById('bottle-send')
-      );
-      bottleSend.disabled = ghostNames.length == 0;
+  function ReceiveGhostInfo(data: string[][]) {
+    hwnds = data[0];
+    ghostNames = data[1];
+    keroNames = data[2];
+    //ドロップダウンメニューに配置
+    const sstpTarget = <HTMLSelectElement>(
+      document.getElementById('sstp-target')
+    );
+    const ifGhost = <HTMLSelectElement>(
+      document.getElementById('bottle-ifghost')
+    );
+    const n = sstpTarget.childElementCount;
+    for (let i = 0; i < n; i++) {
+      sstpTarget.remove(0);
+      ifGhost.remove(0);
     }
-    RequestGhostInfo();
-    const refreshButton = <HTMLButtonElement>document.getElementById('refresh');
-    refreshButton.addEventListener('click', function () {
-      RequestGhostInfo();
-    });
-    //Bottle送信
+    for (let i = 0; i < ghostNames.length; i++) {
+      const optionSstpTarget = <HTMLOptionElement>(
+        document.createElement('option')
+      );
+      optionSstpTarget.setAttribute('value', ghostNames[i]);
+      optionSstpTarget.appendChild(document.createTextNode(ghostNames[i]));
+      sstpTarget.appendChild(optionSstpTarget);
+      const optionIgGhost = <HTMLOptionElement>document.createElement('option');
+      optionIgGhost.setAttribute('value', ghostNames[i] + ',' + keroNames[i]);
+      optionIgGhost.appendChild(
+        document.createTextNode(ghostNames[i] + ',' + keroNames[i]),
+      );
+      ifGhost.appendChild(optionIgGhost);
+    }
     const bottleSend = <HTMLButtonElement>(
       document.getElementById('bottle-send')
     );
-    bottleSend.addEventListener('click', async function (ev: MouseEvent) {
-      const bottleScript = <HTMLTextAreaElement>(
-        document.getElementById('bottle-script')
-      );
-      if (bottleScript == null) {
-        return;
-      }
-      const script = bottleScript.value.replace(/\n/g, '');
-      if (script == '') {
-        return;
-      }
-      bottleSend.disabled = true;
-      const ifGhost = (<HTMLSelectElement>(
-        document.getElementById('bottle-ifghost')
-      )).value;
-      const contentDict = {
-        Script: script,
-        IfGhost: ifGhost,
-      };
-      const kind = Number(
-        (<HTMLSelectElement>document.getElementById('bottle-kind')).value,
-      );
-      const baseEvent: UnsignedEvent = {
-        kind: kind,
-        pubkey: '',
-        created_at: Math.floor(Date.now() / 1000),
-        tags: [],
-        content: JSON.stringify(contentDict),
-      };
-      let newEvent: Event;
-      const useNip07 = <HTMLInputElement>document.getElementById('use-nip-07');
-      if (useNip07.checked && window.nostr) {
-        newEvent = await window.nostr.signEvent(baseEvent);
-      } else {
-        newEvent = finalizeEvent(baseEvent, sk);
-      }
-      pool.publish(bottleRelays, newEvent);
-      bottleScript.value = '';
-      bottleSend.disabled = false;
-    });
-    //タブ切り替え
-    const radioBtns = <NodeListOf<HTMLInputElement>>(
-      document.querySelectorAll('.tabs > input[type="radio"]')
+    bottleSend.disabled = ghostNames.length == 0;
+  }
+  RequestGhostInfo();
+  const refreshButton = <HTMLButtonElement>document.getElementById('refresh');
+  refreshButton.addEventListener('click', function () {
+    RequestGhostInfo();
+  });
+  //Bottle送信
+  const bottleSend = <HTMLButtonElement>document.getElementById('bottle-send');
+  bottleSend.addEventListener('click', async function (ev: MouseEvent) {
+    const bottleScript = <HTMLTextAreaElement>(
+      document.getElementById('bottle-script')
     );
-    radioBtns.forEach((radio) => {
-      radio.addEventListener('change', () => {
-        if (radio.checked) {
-          const kind: number = Number(
-            (<HTMLSelectElement>document.getElementById('bottle-kind')).value,
-          );
-          if (radio.id == 'global' || radio.id == 'following') {
-            subsBase.close();
-            subsBase = connectRelay(defaultRelays);
-          } else if (radio.id == 'bottle') {
-            subsBase.close();
-            subsBase = connectBottleRelay(bottleRelays, kind);
-          }
+    if (bottleScript == null) {
+      return;
+    }
+    const script = bottleScript.value.replace(/\n/g, '');
+    if (script == '') {
+      return;
+    }
+    bottleSend.disabled = true;
+    const ifGhost = (<HTMLSelectElement>(
+      document.getElementById('bottle-ifghost')
+    )).value;
+    const contentDict = {
+      Script: script,
+      IfGhost: ifGhost,
+    };
+    const kind = Number(
+      (<HTMLSelectElement>document.getElementById('bottle-kind')).value,
+    );
+    const baseEvent: UnsignedEvent = {
+      kind: kind,
+      pubkey: '',
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [],
+      content: JSON.stringify(contentDict),
+    };
+    let newEvent: NostrEvent;
+    const useNip07 = <HTMLInputElement>document.getElementById('use-nip-07');
+    if (useNip07.checked && window.nostr) {
+      newEvent = await window.nostr.signEvent(baseEvent);
+    } else {
+      newEvent = finalizeEvent(baseEvent, sk);
+    }
+    pool.publish(bottleRelays, newEvent);
+    bottleScript.value = '';
+    bottleSend.disabled = false;
+  });
+  //タブ切り替え
+  const radioBtns = <NodeListOf<HTMLInputElement>>(
+    document.querySelectorAll('.tabs > input[type="radio"]')
+  );
+  radioBtns.forEach((radio) => {
+    radio.addEventListener('change', () => {
+      if (radio.checked) {
+        const kind: number = Number(
+          (<HTMLSelectElement>document.getElementById('bottle-kind')).value,
+        );
+        if (radio.id == 'global' || radio.id == 'following') {
+          subsBase.close();
+          subsBase = connectRelay(defaultRelays);
+        } else if (radio.id == 'bottle') {
+          subsBase.close();
+          subsBase = connectBottleRelay(bottleRelays, kind);
         }
-      });
+      }
     });
-    (<HTMLSelectElement>(
-      document.getElementById('bottle-kind')
-    )).addEventListener('change', () => {
+  });
+  (<HTMLSelectElement>document.getElementById('bottle-kind')).addEventListener(
+    'change',
+    () => {
       const kind: number = Number(
         (<HTMLSelectElement>document.getElementById('bottle-kind')).value,
       );
       subsBase.close();
       subsBase = connectBottleRelay(bottleRelays, kind);
-    });
-    (window as EventTarget).addEventListener('load', () => {
-      //NIP-07を使用するチェック
-      const useNip07 = <HTMLInputElement>document.getElementById('use-nip-07');
-      const npubNip07 = <HTMLInputElement>(
-        document.getElementById('npub-nip-07')
-      );
-      //NIP-07でログインするチェック
-      const loginWithNip07 = <HTMLInputElement>(
-        document.getElementById('login-with-nip-07')
-      );
-      if (window.nostr && window.nostr.getPublicKey) {
-        loginWithNip07.addEventListener('change', async (e) => {
-          const pubkeyInput = <HTMLInputElement>(
-            document.getElementById('pubkey')
-          );
-          if (loginWithNip07.checked) {
-            const npub = await window.nostr?.getPublicKey();
-            if (npub !== undefined) {
-              pubkeyInput.value = nip19.npubEncode(npub);
-              pubkeyInput.dispatchEvent(new Event('change'));
-            }
-          } else {
-            pubkeyInput.value = '';
+    },
+  );
+  (window as EventTarget).addEventListener('load', () => {
+    //NIP-07を使用するチェック
+    const useNip07 = <HTMLInputElement>document.getElementById('use-nip-07');
+    const npubNip07 = <HTMLInputElement>document.getElementById('npub-nip-07');
+    //NIP-07でログインするチェック
+    const loginWithNip07 = <HTMLInputElement>(
+      document.getElementById('login-with-nip-07')
+    );
+    if (window.nostr && window.nostr.getPublicKey) {
+      loginWithNip07.addEventListener('change', async (e) => {
+        const pubkeyInput = <HTMLInputElement>document.getElementById('pubkey');
+        if (loginWithNip07.checked) {
+          const npub = await window.nostr?.getPublicKey();
+          if (npub !== undefined) {
+            pubkeyInput.value = nip19.npubEncode(npub);
             pubkeyInput.dispatchEvent(new Event('change'));
           }
-        });
-        useNip07.addEventListener('change', async () => {
-          if (useNip07.checked) {
-            await (async function () {
-              const npub = await window.nostr?.getPublicKey();
-              if (npub !== undefined) {
-                //公開鍵表示
-                npubNip07.value = nip19.npubEncode(npub);
-                //プロフィール表示
-                const f0: Filter = {
-                  kinds: [0],
-                  authors: [npub],
-                  limit: 1,
-                };
-                //グローバルのリレーとフォロー中リレーとボトル用リレーから取得する
-                const tRelays: string[] = [];
-                Array.from(
-                  (<HTMLSelectElement>document.getElementById('enabled-relay'))
-                    .options,
-                ).forEach((option) => {
-                  tRelays.push(option.value);
-                });
-                Array.from(
-                  (<HTMLSelectElement>(
-                    document.getElementById('following-relay')
-                  )).options,
-                ).forEach((option) => {
-                  tRelays.push(option.value);
-                });
-                Array.from(
-                  (<HTMLSelectElement>document.getElementById('bottle-relay'))
-                    .options,
-                ).forEach((option) => {
-                  tRelays.push(option.value);
-                });
-                const onevent = (eventF0: Event) => {
-                  const c: any = JSON.parse(eventF0.content);
-                  const dt = <HTMLElement>(
-                    document.getElementById('bottle-profile-dt')
-                  );
-                  dt.innerHTML = '';
-                  if (c.picture != undefined) {
-                    const img = document.createElement('img');
-                    img.src = c.picture;
-                    img.alt = c.name;
-                    img.width = iconSize;
-                    img.height = iconSize;
-                    dt.appendChild(img);
-                  }
-                  dt.appendChild(document.createTextNode(c.display_name));
-                  const a = document.createElement('a');
-                  a.setAttribute(
-                    'href',
-                    baseLinkURL + nip19.npubEncode(eventF0.pubkey),
-                  );
-                  a.textContent = '@' + c.name;
-                  dt.appendChild(a);
-                  const dd = <HTMLElement>(
-                    document.getElementById('bottle-profile-dd')
-                  );
-                  dd.innerHTML = '';
-                  dd.appendChild(document.createTextNode(c.about));
-                  //TLにアイコン表示
-                  if (c.picture != undefined) {
-                    const dts = <NodeListOf<HTMLElement>>(
-                      document.querySelectorAll('#bottle-tl > dt')
-                    );
-                    dts.forEach((element) => {
-                      //自分の投稿だった場合
-                      if (element.dataset.npub == nip19.npubEncode(npub)) {
-                        const img = document.createElement('img');
-                        img.src = c.picture;
-                        img.alt = c.name;
-                        img.width = iconSize;
-                        img.height = iconSize;
-                        element.appendChild(img);
-                      }
-                    });
-                  }
-                };
-                const oneose = () => {
-                  subsF0.close();
-                };
-                const subsF0 = pool.subscribeMany(tRelays, [f0], {
-                  onevent,
-                  oneose,
-                });
-              }
-            })();
-          } else {
-            npubNip07.value = '';
-            const dt = <HTMLElement>(
-              document.getElementById('bottle-profile-dt')
-            );
-            dt.innerHTML = '';
-            const dd = <HTMLElement>(
-              document.getElementById('bottle-profile-dd')
-            );
-            dd.innerHTML = '';
-            const dts = <NodeListOf<HTMLElement>>(
-              document.querySelectorAll('#bottle-tl > dt > img')
-            );
-            dts.forEach((element) => {
-              element.remove();
-            });
-          }
-        });
-      } else {
-        loginWithNip07.disabled = true;
-        useNip07.disabled = true;
-        npubNip07.disabled = true;
-      }
-    });
-    //FMOから起動中のゴースト情報を取得
-    async function RequestGhostInfo() {
-      const mes = [
-        'EXECUTE SSTP/1.1',
-        'Charset: UTF-8',
-        'SecurityLevel: external',
-        'Command: GetFMO',
-        '',
-        '',
-      ];
-      const res: string = await postData(
-        sspServerURL + '/api/sstp/v1',
-        mes.join('\n'),
-      );
-      const lines = res.split('\r\n');
-      const hwnds = [];
-      const names = [];
-      const keronames = [];
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].indexOf('.hwnd' + String.fromCharCode(1)) >= 0) {
-          const hwnd = lines[i]
-            .split(String.fromCharCode(1))[1]
-            .replace('\r', '');
-          hwnds.push(hwnd);
-        } else if (lines[i].indexOf('.name' + String.fromCharCode(1)) >= 0) {
-          const name = lines[i]
-            .split(String.fromCharCode(1))[1]
-            .replace('\r', '');
-          names.push(name);
-        } else if (
-          lines[i].indexOf('.keroname' + String.fromCharCode(1)) >= 0
-        ) {
-          const keroname = lines[i]
-            .split(String.fromCharCode(1))[1]
-            .replace('\r', '');
-          keronames.push(keroname);
+        } else {
+          pubkeyInput.value = '';
+          pubkeyInput.dispatchEvent(new Event('change'));
         }
-      }
-      ReceiveGhostInfo([hwnds, names, keronames]);
+      });
+      useNip07.addEventListener('change', async () => {
+        if (useNip07.checked) {
+          await (async function () {
+            const npub = await window.nostr?.getPublicKey();
+            if (npub !== undefined) {
+              //公開鍵表示
+              npubNip07.value = nip19.npubEncode(npub);
+              //プロフィール表示
+              const f0: Filter = {
+                kinds: [0],
+                authors: [npub],
+                limit: 1,
+              };
+              //グローバルのリレーとフォロー中リレーとボトル用リレーから取得する
+              const tRelays: string[] = [];
+              Array.from(
+                (<HTMLSelectElement>document.getElementById('enabled-relay'))
+                  .options,
+              ).forEach((option) => {
+                tRelays.push(option.value);
+              });
+              Array.from(
+                (<HTMLSelectElement>document.getElementById('following-relay'))
+                  .options,
+              ).forEach((option) => {
+                tRelays.push(option.value);
+              });
+              Array.from(
+                (<HTMLSelectElement>document.getElementById('bottle-relay'))
+                  .options,
+              ).forEach((option) => {
+                tRelays.push(option.value);
+              });
+              const onevent = (eventF0: NostrEvent) => {
+                const c: any = JSON.parse(eventF0.content);
+                const dt = <HTMLElement>(
+                  document.getElementById('bottle-profile-dt')
+                );
+                dt.innerHTML = '';
+                if (c.picture != undefined) {
+                  const img = document.createElement('img');
+                  img.src = c.picture;
+                  img.alt = c.name;
+                  img.width = iconSize;
+                  img.height = iconSize;
+                  dt.appendChild(img);
+                }
+                dt.appendChild(document.createTextNode(c.display_name));
+                const a = document.createElement('a');
+                a.setAttribute(
+                  'href',
+                  baseLinkURL + nip19.npubEncode(eventF0.pubkey),
+                );
+                a.textContent = '@' + c.name;
+                dt.appendChild(a);
+                const dd = <HTMLElement>(
+                  document.getElementById('bottle-profile-dd')
+                );
+                dd.innerHTML = '';
+                dd.appendChild(document.createTextNode(c.about));
+                //TLにアイコン表示
+                if (c.picture != undefined) {
+                  const dts = <NodeListOf<HTMLElement>>(
+                    document.querySelectorAll('#bottle-tl > dt')
+                  );
+                  dts.forEach((element) => {
+                    //自分の投稿だった場合
+                    if (element.dataset.npub == nip19.npubEncode(npub)) {
+                      const img = document.createElement('img');
+                      img.src = c.picture;
+                      img.alt = c.name;
+                      img.width = iconSize;
+                      img.height = iconSize;
+                      element.appendChild(img);
+                    }
+                  });
+                }
+              };
+              const oneose = () => {
+                subsF0.close();
+              };
+              const subsF0 = pool.subscribeMany(tRelays, [f0], {
+                onevent,
+                oneose,
+              });
+            }
+          })();
+        } else {
+          npubNip07.value = '';
+          const dt = <HTMLElement>document.getElementById('bottle-profile-dt');
+          dt.innerHTML = '';
+          const dd = <HTMLElement>document.getElementById('bottle-profile-dd');
+          dd.innerHTML = '';
+          const dts = <NodeListOf<HTMLElement>>(
+            document.querySelectorAll('#bottle-tl > dt > img')
+          );
+          dts.forEach((element) => {
+            element.remove();
+          });
+        }
+      });
+    } else {
+      loginWithNip07.disabled = true;
+      useNip07.disabled = true;
+      npubNip07.disabled = true;
     }
+  });
+  //FMOから起動中のゴースト情報を取得
+  async function RequestGhostInfo() {
+    const mes = [
+      'EXECUTE SSTP/1.1',
+      'Charset: UTF-8',
+      'SecurityLevel: external',
+      'Command: GetFMO',
+      '',
+      '',
+    ];
+    const res: string = await postData(
+      sspServerURL + '/api/sstp/v1',
+      mes.join('\n'),
+    );
+    const lines = res.split('\r\n');
+    const hwnds = [];
+    const names = [];
+    const keronames = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].indexOf('.hwnd' + String.fromCharCode(1)) >= 0) {
+        const hwnd = lines[i]
+          .split(String.fromCharCode(1))[1]
+          .replace('\r', '');
+        hwnds.push(hwnd);
+      } else if (lines[i].indexOf('.name' + String.fromCharCode(1)) >= 0) {
+        const name = lines[i]
+          .split(String.fromCharCode(1))[1]
+          .replace('\r', '');
+        names.push(name);
+      } else if (lines[i].indexOf('.keroname' + String.fromCharCode(1)) >= 0) {
+        const keroname = lines[i]
+          .split(String.fromCharCode(1))[1]
+          .replace('\r', '');
+        keronames.push(keroname);
+      }
+    }
+    ReceiveGhostInfo([hwnds, names, keronames]);
   }
 
   //DirectSSTPを送信する関数
@@ -443,159 +425,154 @@ declare global {
   pool.trackRelays = true;
   subsBase = connectRelay(defaultRelays);
   //ts-doneで実行する際はDOM操作はできない
-  if (hasDOM) {
-    //リレーをセレクトボックスに入れる
-    deployRelay(defaultRelays, additionalRelays, bottleRelays, bottleKinds);
-    //公開鍵の入力に反応
-    const pubkeyInput = <HTMLInputElement>document.getElementById('pubkey');
+  //リレーをセレクトボックスに入れる
+  deployRelay(defaultRelays, additionalRelays, bottleRelays, bottleKinds);
+  //公開鍵の入力に反応
+  const pubkeyInput = <HTMLInputElement>document.getElementById('pubkey');
 
-    let subsFollowing: SubCloser;
-    pubkeyInput.addEventListener('change', () => {
-      const { type, data } = nip19.decode(pubkeyInput.value);
-      let pubkey: string = '';
-      if (typeof data === 'string') {
-        pubkey = data;
-      } else {
+  let subsFollowing: SubCloser;
+  pubkeyInput.addEventListener('change', () => {
+    const { type, data } = nip19.decode(pubkeyInput.value);
+    let pubkey: string = '';
+    if (typeof data === 'string') {
+      pubkey = data;
+    } else {
+      return;
+    }
+    const f3: Filter = {
+      kinds: [3],
+      authors: [pubkey],
+      limit: 1,
+    };
+    //グローバルのリレーとフォロー中リレーから取得する
+    const tRelays: string[] = [];
+    Array.from(
+      (<HTMLSelectElement>document.getElementById('enabled-relay')).options,
+    ).forEach((option) => {
+      tRelays.push(option.value);
+    });
+    Array.from(
+      (<HTMLSelectElement>document.getElementById('following-relay')).options,
+    ).forEach((option) => {
+      tRelays.push(option.value);
+    });
+    let gotF3 = false;
+    const onevent = async (eventF3: NostrEvent) => {
+      if (gotF3) {
         return;
       }
-      const f3: Filter = {
-        kinds: [3],
+      let relays: any;
+      const relaysa: string[] = [];
+      try {
+        relays = JSON.parse(eventF3.content);
+      } catch (error) {
+        console.log(error);
+        console.log(eventF3);
+        //TODO:NIP-65
+        return;
+      }
+      gotF3 = true;
+      const followings: string[] = [];
+      eventF3.tags.forEach((tag: string[]) => {
+        if (tag[0] == 'p') {
+          followings.push(tag[1]);
+        }
+      });
+      const followingRelays = <HTMLSelectElement>(
+        document.getElementById('following-relay')
+      );
+      Array.from(followingRelays.options).forEach((option) => {
+        followingRelays.remove(0);
+      });
+      Object.keys(relays).forEach((relay) => {
+        relaysa.push(relay);
+        const op = <HTMLOptGroupElement>document.createElement('option');
+        op.textContent = relay;
+        followingRelays.add(op);
+      });
+      const procs = relaysa.map((relay) => {
+        try {
+          pool.ensureRelay(relay);
+        } catch (error) {
+          console.log('ensureRelay error: ', error);
+        }
+      });
+      const ret = await Promise.all(procs);
+      const f0: Filter = {
+        kinds: [0],
         authors: [pubkey],
         limit: 1,
       };
-      //グローバルのリレーとフォロー中リレーから取得する
-      const tRelays: string[] = [];
-      Array.from(
-        (<HTMLSelectElement>document.getElementById('enabled-relay')).options,
-      ).forEach((option) => {
-        tRelays.push(option.value);
-      });
-      Array.from(
-        (<HTMLSelectElement>document.getElementById('following-relay')).options,
-      ).forEach((option) => {
-        tRelays.push(option.value);
-      });
-      let gotF3 = false;
-      const onevent = async (eventF3: Event) => {
-        if (gotF3) {
-          return;
+      const onevent21 = (eventF0: NostrEvent) => {
+        const c: any = JSON.parse(eventF0.content);
+        const dt = <HTMLElement>document.getElementById('profile-dt');
+        dt.innerHTML = '';
+        if (c.picture != undefined) {
+          const img = document.createElement('img');
+          img.src = c.picture;
+          img.alt = c.name;
+          img.width = iconSize;
+          img.height = iconSize;
+          dt.appendChild(img);
         }
-        let relays: any;
-        const relaysa: string[] = [];
-        try {
-          relays = JSON.parse(eventF3.content);
-        } catch (error) {
-          console.log(error);
-          console.log(eventF3);
-          //TODO:NIP-65
-          return;
-        }
-        gotF3 = true;
-        const followings: string[] = [];
-        eventF3.tags.forEach((tag: string[]) => {
-          if (tag[0] == 'p') {
-            followings.push(tag[1]);
-          }
-        });
-        const followingRelays = <HTMLSelectElement>(
-          document.getElementById('following-relay')
-        );
-        Array.from(followingRelays.options).forEach((option) => {
-          followingRelays.remove(0);
-        });
-        Object.keys(relays).forEach((relay) => {
-          relaysa.push(relay);
-          const op = <HTMLOptGroupElement>document.createElement('option');
-          op.textContent = relay;
-          followingRelays.add(op);
-        });
-        const procs = relaysa.map((relay) => {
-          try {
-            pool.ensureRelay(relay);
-          } catch (error) {
-            console.log('ensureRelay error: ', error);
-          }
-        });
-        const ret = await Promise.all(procs);
-        const f0: Filter = {
-          kinds: [0],
-          authors: [pubkey],
-          limit: 1,
-        };
-        const onevent21 = (eventF0: Event) => {
-          const c: any = JSON.parse(eventF0.content);
-          const dt = <HTMLElement>document.getElementById('profile-dt');
-          dt.innerHTML = '';
-          if (c.picture != undefined) {
-            const img = document.createElement('img');
-            img.src = c.picture;
-            img.alt = c.name;
-            img.width = iconSize;
-            img.height = iconSize;
-            dt.appendChild(img);
-          }
-          dt.appendChild(document.createTextNode(c.display_name));
-          const a = document.createElement('a');
-          a.setAttribute(
-            'href',
-            baseLinkURL + nip19.npubEncode(eventF0.pubkey),
-          );
-          a.textContent = '@' + c.name;
-          dt.appendChild(a);
-          const dd = <HTMLElement>document.getElementById('profile-dd');
-          dd.innerHTML = '';
-          dd.appendChild(document.createTextNode(c.about));
-        };
-        const oneose21 = () => {
-          subsF0.close();
-        };
-        const subsF0 = pool.subscribeMany(relaysa, [f0], {
-          onevent: onevent21,
-          oneose: oneose21,
-        });
-        followings.push(pubkey);
-        const f1: Filter = {
-          kinds: [1],
-          authors: followings,
-          since: Math.floor(Date.now() / 1000) - 30 * 60,
-          limit: 20,
-        };
-        const dl = <HTMLElement>document.getElementById('following-tl');
-        dl.innerHTML = '';
-        const onevent22 = (eventF1: Event) => {
-          makeTL('following', relaysa, eventF1);
-        };
-        const oneose22 = () => {};
-        const subsF1 = pool.subscribeMany(relaysa, [f1], {
-          onevent: onevent22,
-          oneose: oneose22,
-        });
-        if (subsFollowing) {
-          subsFollowing.close();
-        }
-        subsFollowing = subsF1;
+        dt.appendChild(document.createTextNode(c.display_name));
+        const a = document.createElement('a');
+        a.setAttribute('href', baseLinkURL + nip19.npubEncode(eventF0.pubkey));
+        a.textContent = '@' + c.name;
+        dt.appendChild(a);
+        const dd = <HTMLElement>document.getElementById('profile-dd');
+        dd.innerHTML = '';
+        dd.appendChild(document.createTextNode(c.about));
       };
-      const oneose = () => {
-        subsF3.close();
+      const oneose21 = () => {
+        subsF0.close();
       };
-      const subsF3 = pool.subscribeMany(Array.from(new Set(tRelays)), [f3], {
-        onevent,
-        oneose,
+      const subsF0 = pool.subscribeMany(relaysa, [f0], {
+        onevent: onevent21,
+        oneose: oneose21,
       });
+      followings.push(pubkey);
+      const f1: Filter = {
+        kinds: [1],
+        authors: followings,
+        since: Math.floor(Date.now() / 1000) - 30 * 60,
+        limit: 20,
+      };
+      const dl = <HTMLElement>document.getElementById('following-tl');
+      dl.innerHTML = '';
+      const onevent22 = (eventF1: NostrEvent) => {
+        makeTL('following', relaysa, eventF1);
+      };
+      const oneose22 = () => {};
+      const subsF1 = pool.subscribeMany(relaysa, [f1], {
+        onevent: onevent22,
+        oneose: oneose22,
+      });
+      if (subsFollowing) {
+        subsFollowing.close();
+      }
+      subsFollowing = subsF1;
+    };
+    const oneose = () => {
+      subsF3.close();
+    };
+    const subsF3 = pool.subscribeMany(Array.from(new Set(tRelays)), [f3], {
+      onevent,
+      oneose,
     });
-  }
+  });
 
   //逆引きできるよう投稿者の情報をためておく
   const pubkeys: { [key: string]: string } = {}; //idからpubkeyを逆引きするためのもの
   const names: { [key: string]: string } = {}; //pubkeyからプロフィール情報を逆引きするためのもの
-  function makeTL(tabID: string, relays: string[], event: Event) {
+  function makeTL(tabID: string, relays: string[], event: NostrEvent) {
     //投稿者のプロフィールを取得
     const f2: Filter = {
       kinds: [0],
       authors: [event.pubkey],
     };
     let added: boolean = false;
-    const onevent = (event2: Event) => {
+    const onevent = (event2: NostrEvent) => {
       if (!event.id) {
         return;
       }
@@ -771,7 +748,7 @@ declare global {
     const subs2 = pool.subscribeMany(relays, [f2], { onevent, oneose });
   }
 
-  function makeBottleTL(tabID: string, event: Event) {
+  function makeBottleTL(tabID: string, event: NostrEvent) {
     if (!event.id) {
       return;
     }
@@ -868,11 +845,9 @@ declare global {
       since: Math.floor(Date.now() / 1000) - 30 * 60,
       limit: 20,
     };
-    if (hasDOM) {
-      const dl = <HTMLElement>document.getElementById('global-tl');
-      dl.innerHTML = '';
-    }
-    const onevent = (event: Event) => {
+    const dl = <HTMLElement>document.getElementById('global-tl');
+    dl.innerHTML = '';
+    const onevent = (event: NostrEvent) => {
       makeTL('global', relays, event);
     };
     const oneose = () => {};
@@ -887,11 +862,9 @@ declare global {
       //			since: Math.floor(Date.now() / 1000) - 30 * 24 *60 * 60,
       limit: 20,
     };
-    if (hasDOM) {
-      const dl = <HTMLElement>document.getElementById('bottle-tl');
-      dl.innerHTML = '';
-    }
-    const onevent = (event: Event) => {
+    const dl = <HTMLElement>document.getElementById('bottle-tl');
+    dl.innerHTML = '';
+    const onevent = (event: NostrEvent) => {
       makeBottleTL('bottle', event);
     };
     const oneose = () => {};
