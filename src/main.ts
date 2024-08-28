@@ -10,9 +10,7 @@ import {
 	UnsignedEvent,
 	finalizeEvent,
 } from 'nostr-tools/pure';
-//import { useWebSocketImplementation } from 'nostr-tools/pool';
-//import WebSocket from 'ws';
-//useWebSocketImplementation(WebSocket);
+import './style.css';
 
 declare global {
 	interface Window {

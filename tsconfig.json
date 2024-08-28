@@ -1,8 +1,8 @@
 {
 	"compilerOptions": {
 		"sourceMap": true,
-		"target": "es2015",
-		"module": "ES2015",
+		"target": "ESNext",
+		"module": "ESNext",
 		"strict": true,
 		"moduleResolution": "Bundler"
 	}

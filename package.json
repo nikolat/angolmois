@@ -1,24 +1,21 @@
 {
 	"name": "angolmois-web",
 	"version": "0.5.0",
-	"scripts": {
-		"dev": "node --loader ts-node/esm src/main.ts",
-		"build": "webpack",
-		"watch": "webpack -w"
-	},
-	"devDependencies": {
-		"@types/ws": "^8.5.10",
-		"ts-loader": "^9.5.1",
-		"ts-node": "^10.9.2",
-		"typescript": "^5.4.5",
-		"webpack": "^5.92.0",
-		"webpack-cli": "^5.1.4"
-	},
-	"type": "commonjs",
 	"license": "UNLICENSED",
 	"private": true,
+	"scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview"
+	},
 	"dependencies": {
-		"nostr-tools": "^2.7.0",
-		"ws": "^8.17.0"
-	}
+		"nostr-tools": "^2.7.2",
+		"ws": "^8.18.0"
+	},
+	"devDependencies": {
+		"@types/ws": "^8.5.12",
+		"typescript": "^5.5.4",
+		"vite": "^5.4.2"
+	},
+	"type": "module"
 }
